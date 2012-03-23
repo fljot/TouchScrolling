@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<views:ExampleViewBase xmlns:fx="http://ns.adobe.com/mxml/2009"
+    xmlns:s="library://ns.adobe.com/flex/spark"
+	xmlns:mx="library://ns.adobe.com/flex/mx"
+	xmlns:views="views.*"
+	>
+	
+	<fx:Script>
+		<![CDATA[
+			import components.TiledGroup;
+			import components.TouchScroller;
+
+			import com.inreflected.ui.managers.TouchScrollManager;
+			
+			
+			private var touchScroller:TouchScroller;
+			private var tiledGroup:TiledGroup;
+
+
+			override protected function init():void
+			{
+				super.init();
+				
+								
+			}
+			
+			
+			override protected function onViewActivate():void
+			{
+				super.onViewActivate();
+				
+				touchScroller = new TouchScroller();
+				touchScroller.touchScrollManager.panGesture.maxNumTouchesRequired = 2;			
+				app.parent.addChildAt(touchScroller, 0);
+				
+				tiledGroup = new TiledGroup();
+				touchScroller.viewport = tiledGroup;
+				
+				widthSlider.value = tiledGroup.numCols;
+				heightSlider.value = tiledGroup.numRows;
+				bounceCheckBox.selected = touchScroller.touchScrollManager.bounceEnabled;
+				allwaysBounceHCheckBox.selected = touchScroller.touchScrollManager.allwaysBounceHorizontal;
+				allwaysBounceVCheckBox.selected = touchScroller.touchScrollManager.allwaysBounceVertical;
+				maxPullSlider.value = TouchScrollManager.MAX_PULL_FACTOR;
+				maxBounceSlider.value = TouchScrollManager.MAX_OVERSHOOT_FACTOR;
+				frictionFactorSlider.value = touchScroller.touchScrollManager.frictionFactor;
+				directionalLockCheckBox.selected = touchScroller.touchScrollManager.directionalLock;
+				pagingCheckBox.selected = touchScroller.touchScrollManager.pagingEnabled;
+			}
+			
+			
+			override protected function onViewDeactivate():void
+			{
+				super.onViewDeactivate();
+				
+				if (touchScroller)
+				{
+					touchScroller.parent.removeChild(touchScroller);
+					touchScroller.touchScrollManager.dispose();
+					touchScroller = null;
+				}
+			}
+			
+			
+			protected function updateTiledGroupCells():void
+			{
+				if (touchScroller.touchScrollManager.pagingEnabled)
+				{
+					tiledGroup.cellWidth = tiledGroup.width;
+					tiledGroup.cellHeight = tiledGroup.height;
+				}
+				else
+				{
+					tiledGroup.cellWidth = tiledGroup.cellHeight = 128;
+				}
+			}
+			
+				
+			override protected function onResize(width:Number, height:Number):void
+			{
+				super.onResize(width, height);
+				
+				if (touchScroller)
+				{
+					touchScroller.width = stage.stageWidth;
+					touchScroller.height = stage.stageHeight;
+					updateTiledGroupCells();
+				}
+			}
+			
+			
+			private function onControlChange(event:Event = null):void
+			{
+				if (event.target == widthSlider)
+				{
+					tiledGroup.numCols = widthSlider.value;
+				}
+				else
+				if (event.target == heightSlider)
+				{
+					tiledGroup.numRows = heightSlider.value;
+				}
+				else
+				if (event.target == bounceCheckBox)
+				{
+					touchScroller.touchScrollManager.bounceEnabled = bounceCheckBox.selected;
+				}
+				else
+				if (event.target == allwaysBounceHCheckBox)
+				{
+					touchScroller.touchScrollManager.allwaysBounceHorizontal = allwaysBounceHCheckBox.selected;
+				}
+				else
+				if (event.target == maxPullSlider)
+				{
+					touchScroller.touchScrollManager.maxPull = maxPullSlider.value;
+				}
+				else
+				if (event.target == maxBounceSlider)
+				{
+					touchScroller.touchScrollManager.maxBounce = maxBounceSlider.value;
+				}
+				else
+				if (event.target == frictionFactorSlider)
+				{
+					touchScroller.touchScrollManager.frictionFactor = frictionFactorSlider.value;
+				}
+				else
+				if (event.target == directionalLockCheckBox)
+				{
+					touchScroller.touchScrollManager.directionalLock = directionalLockCheckBox.selected;
+				}
+				else
+				if (event.target == pagingCheckBox)
+				{
+					touchScroller.touchScrollManager.pagingEnabled = pagingCheckBox.selected;
+					updateTiledGroupCells();
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:Group id="settings">	
+		<s:Label text="width"/>
+		<s:HSlider id="widthSlider"
+			minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
+			change="onControlChange(event)"/>
+		
+		<s:Label text="height"/>
+		<s:HSlider id="heightSlider"
+			minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
+			change="onControlChange(event)"/>
+		
+		<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
+		<s:CheckBox id="allwaysBounceHCheckBox" label="allwaysBounceHorizontal" change="onControlChange(event)" />
+		<s:CheckBox id="allwaysBounceVCheckBox" label="allwaysBounceVertical" change="onControlChange(event)" />
+		
+		<s:Label text="maxPull"/>
+		<s:HSlider id="maxPullSlider"
+			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+			change="onControlChange(event)"/>
+		
+		<s:Label text="maxBounce"/>
+		<s:HSlider id="maxBounceSlider"
+			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+			change="onControlChange(event)"/>
+		
+		<s:Label text="frictionFactor"/>
+		<s:HSlider id="frictionFactorSlider"
+			minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
+			change="onControlChange(event)"/>
+		
+		<s:CheckBox id="directionalLockCheckBox" label="directionalLock" change="onControlChange(event)" />
+		<s:CheckBox id="pagingCheckBox" label="pagingEnabled" change="onControlChange(event)" />
+	</s:Group>
+	
+</views:ExampleViewBase>

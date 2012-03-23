@@ -1,0 +1,15 @@
+_resources/
+bin/
+bin-debug/
+bin-release/
+
+.svn/
+
+Thumbs.db
+.DS_Store
+build.properties
+.project
+.settings/
+
+build/*/*.p12
+build/*/*.mobileprovision
