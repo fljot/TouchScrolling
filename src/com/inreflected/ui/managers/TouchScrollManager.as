@@ -1674,7 +1674,13 @@ package com.inreflected.ui.managers
 						event.stopImmediatePropagation();
 						
 						stopThrowEffectOnTouch();
-						startScrollWatch();
+						
+						// Since we may have multitouch, this condition helps to call
+						// startScrollWatch() only once per touch interaction session.
+						if (!_inTouchInteraction)
+						{
+							startScrollWatch();
+						}
 					}										
 					break;
 				
