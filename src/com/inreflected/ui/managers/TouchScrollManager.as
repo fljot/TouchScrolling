@@ -461,6 +461,7 @@ package com.inreflected.ui.managers
 			var wasScrolling:Boolean = isScrolling;
 			_inTouchInteraction = false;
 			_isScrolling = false;
+			_dragScrollPending = false;
 			_directionalLockTimer.reset();
 			_lockHorizontal = _lockVertical = false;
 			
@@ -640,9 +641,6 @@ package com.inreflected.ui.managers
 			if (isScrolling)
 			{
 				// touch while throw effect playing
-				
-				// prevent performDrag() jumping on next ENTER_FRAME cycle
-				_dragScrollPending = false;
 					
 				if (directionalLock && (_lockHorizontal || _lockVertical))
 				{
