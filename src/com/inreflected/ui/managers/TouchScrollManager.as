@@ -1720,8 +1720,20 @@ package com.inreflected.ui.managers
 			switch (event.newState)
 			{
 				case GestureState.CANCELLED:
-				case GestureState.FAILED:
 					stop();
+					break;
+				case GestureState.FAILED:
+					if (isScrolling)
+					{
+						// Touch came when content was scrolling,
+						// but gesture hasn't began (touch hasn't moved enough).
+						// Regular throw will be performed (with zero velocity)
+						onDragEnd();
+					}
+					else
+					{
+						stop();
+					}
 					break;
 			}
 		}
@@ -1833,7 +1845,7 @@ package com.inreflected.ui.managers
 		}
 
 		
-		protected function onDragEnd(event:PanGestureEvent):void 
+		protected function onDragEnd(event:PanGestureEvent = null):void 
 		{
 			viewport.removeEventListener(Event.ENTER_FRAME, viewport_enterFrameHandler);
 			_inTouchInteraction = false;
