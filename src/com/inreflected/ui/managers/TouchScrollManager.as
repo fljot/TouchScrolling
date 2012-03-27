@@ -1647,7 +1647,7 @@ package com.inreflected.ui.managers
 					
 					// 5 pixels at 252dpi worked fairly well for this heuristic.
 					const THRESHOLD_INCHES:Number = 0.01984;// 5/252
-					var captureThreshold:Number = Math.round(THRESHOLD_INCHES * Capabilities.screenDPI);
+					var captureThreshold:uint = THRESHOLD_INCHES * Capabilities.screenDPI;
 					
 					// Need to convert the pixel delta to the local coordinate system in
 					// order to compare it to a scroll position delta.
@@ -1655,13 +1655,12 @@ package com.inreflected.ui.managers
 						.subtract(_interactiveTarget.globalToLocal(ZERO_POINT)).x;
 					
 					if (_throwEffect && _throwEffect.isPlaying &&
-						(Math.abs(viewport.verticalScrollPosition - _throwFinalVSP) <= captureThreshold ||
-						 Math.abs(viewport.horizontalScrollPosition - _throwFinalHSP) <= captureThreshold))
+						Math.abs(viewport.verticalScrollPosition - _throwFinalVSP) <= captureThreshold &&
+						Math.abs(viewport.horizontalScrollPosition - _throwFinalHSP) <= captureThreshold)
 					{
-						// Stop the current throw and allow the event
-						// to propogate normally.
+						// Stop the current throw and allow the event to propogate normally.
 						// We must supress panGesture.reset() call because this touch is already
-						// registered by gesture (on stage in capture phase).
+						// registered by gesture (on stage in capture phase) and we should not loose it.
 						_preventGestureReset = true;
 						stop();
 						_preventGestureReset = false;
