@@ -630,6 +630,11 @@ package com.inreflected.ui.managers
 			
 			updateCanScroll();
 			
+			if (isScrolling)
+			{
+				adjustCummulativeOffsets();
+			}
+			
 			// this is the point from which all deltas are based.
 			_startTime = getTimer();
 			
@@ -659,6 +664,53 @@ package com.inreflected.ui.managers
 			}
 			
 			_directionalLockTimer.reset();
+		}
+		
+		
+		protected function adjustCummulativeOffsets():void
+		{
+			// We need to adjust _cummulativeOffsetX and _cummulativeOffsetY
+			// to preserve correct pull mechanics
+			var viewportSize:Number;//viewport width or height
+			var pullProgress:Number;// [0.. 1]
+			const pullAllowed:Boolean = (maxPull != maxPull || maxPull > 0);
+			const scrollBounds:Rectangle = this.scrollBounds;
+			
+			if (pullAllowed && canScrollHorizontally)
+			{
+				viewportSize = viewport.width;
+				if (_touchHSP < scrollBounds.left)
+				{
+					pullProgress = (scrollBounds.left - _touchHSP) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					_cummulativeOffsetX = viewportSize * pullProgress + _touchHSP - scrollBounds.left;
+				}
+				else
+				if (_touchHSP > scrollBounds.right)
+				{
+					pullProgress = (_touchHSP - scrollBounds.right) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					 _cummulativeOffsetX = -viewportSize * pullProgress + _touchHSP - scrollBounds.right;
+				}
+			}
+			
+			if (pullAllowed && canScrollVertically)
+			{
+				viewportSize = viewport.height;
+				if (_touchVSP < scrollBounds.top)
+				{
+					pullProgress = (scrollBounds.top - _touchVSP) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					_cummulativeOffsetY = viewportSize * pullProgress + _touchVSP - scrollBounds.top;
+				}
+				else
+				if (_touchVSP > scrollBounds.bottom)
+				{
+					pullProgress = (_touchVSP - scrollBounds.bottom) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					 _cummulativeOffsetY = -viewportSize * pullProgress + _touchVSP - scrollBounds.bottom;
+				}
+			}
 		}
 		
 		
@@ -756,8 +808,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = scrollBounds.left - newHSP;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newHSP = scrollBounds.left - viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newHSP = scrollBounds.left - viewportSize * pullProgress;
 						}
 						else
 						{
@@ -767,8 +819,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = newHSP - scrollBounds.right;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newHSP = scrollBounds.right + viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newHSP = scrollBounds.right + viewportSize * pullProgress;
 						}
 					}
 					else
@@ -797,8 +849,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = scrollBounds.top - newVSP;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newVSP = scrollBounds.top - viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newVSP = scrollBounds.top - viewportSize * pullProgress;
 						}
 						else
 						{
@@ -808,8 +860,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = newVSP - scrollBounds.bottom;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newVSP = scrollBounds.bottom + viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newVSP = scrollBounds.bottom + viewportSize * pullProgress;
 						}
 					}
 					else
