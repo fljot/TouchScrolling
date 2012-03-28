@@ -329,6 +329,13 @@ package com.inreflected.ui.managers
 				checkScrollPosition();
 			}
 		}
+		/**
+		 * Same as scrollBounds getter but without clonning. For internal performant use.
+		 */
+		protected function getScrollBounds():Rectangle
+		{
+			return _explicitScrollBounds ? _explicitScrollBounds : _measuredScrollBounds;
+		}
 		
 		
 		/** @private */
@@ -674,7 +681,7 @@ package com.inreflected.ui.managers
 			var viewportSize:Number;//viewport width or height
 			var pullProgress:Number;// [0.. 1]
 			const pullAllowed:Boolean = (maxPull != maxPull || maxPull > 0);
-			const scrollBounds:Rectangle = this.scrollBounds;
+			const scrollBounds:Rectangle = getScrollBounds();
 			
 			if (pullAllowed && canScrollHorizontally)
 			{
@@ -787,7 +794,7 @@ package com.inreflected.ui.managers
 			var pullOffset:Number;// >=0
 			var pullProgress:Number;// [0.. 1]
 			
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			const pullAllowed:Boolean = (maxPull != maxPull || maxPull > 0);
 			
 			if (canScrollHorizontally)
@@ -931,7 +938,7 @@ package com.inreflected.ui.managers
 				_throwEffect.onEffectCompleteFunction = onThrowEffectComplete;
 			}
 			
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			var minHSP:Number = scrollBounds.left;
 			var minVSP:Number = scrollBounds.top;
 			var maxHSP:Number = scrollBounds.right;
@@ -1234,7 +1241,7 @@ package com.inreflected.ui.managers
 		 */
 		protected function snapContentScrollPosition(snapHorizontal:Boolean = true, snapVertical:Boolean = true):void
 		{
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			var pos:Number;
 						
 			// Note that we only snap the scroll position if content is present. This allows existing scroll position
@@ -1281,7 +1288,7 @@ package com.inreflected.ui.managers
 		 */
 		protected function getSnappedPosition(position:Number, propertyName:String):Number
 		{
-			const scrollBounds:Rectangle = this.scrollBounds;
+			const scrollBounds:Rectangle = getScrollBounds();
 			
 			var viewportWidth:Number = isNaN(viewport.width) ? 0 : viewport.width;
 			var viewportHeight:Number = isNaN(viewport.height) ? 0 : viewport.height;
@@ -1351,7 +1358,7 @@ package com.inreflected.ui.managers
 			
 			updateCanScroll();
 			
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			// Determine the new maximum valid scroll positions
 			var minHSP:Number = scrollBounds.left;
 			var minVSP:Number = scrollBounds.top;
@@ -1569,7 +1576,7 @@ package com.inreflected.ui.managers
 			var viewportSize:Number;
 			var minSP:Number;
 			var maxSP:Number;
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			var currPageScrollPosition:Number;
 			if (propertyName == VERTICAL_SCROLL_POSITION)
 			{
