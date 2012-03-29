@@ -236,13 +236,6 @@ package com.inreflected.ui.managers
 		protected var _throwFinalHSP:Number;
 		protected var _throwFinalVSP:Number;
 		
-		/**
-		 *  @private
-		 *  Indicates whether the previous throw reached one of the maximum
-		 *  scroll positions (vsp or hsp) that was in effect at the time. 
-		 */
-		protected var _throwReachedMaximumScrollPosition:Boolean;
-		
 		protected var _stageAspectRatio:Number;
 		protected var _prevViewportWidth:Number;
 		protected var _prevViewportHeight:Number;
@@ -988,20 +981,10 @@ package com.inreflected.ui.managers
 //	        _throwEffect.finalPositionFilterFunction = snappingFunction == null ? null : getSnappedPosition; 
 	        _throwEffect.finalPositionFilterFunction = snappingFunction; 
 	        
-			_throwReachedMaximumScrollPosition = false;
 	        if (_throwEffect.setup())
 	        {
-				//TODO: _throwReachedMin... ?
 	            _throwFinalHSP = _throwEffect.finalPosition.x;
-	            if (canScrollHorizontally && _throwFinalHSP == maxHSP)
-				{
-	                _throwReachedMaximumScrollPosition = true;
-				}
 	            _throwFinalVSP = _throwEffect.finalPosition.y;
-	            if (canScrollVertically && _throwFinalVSP == maxVSP)
-				{
-	                _throwReachedMaximumScrollPosition = true;
-				}
 	        }
 	        else
 	        {
@@ -1409,12 +1392,6 @@ package com.inreflected.ui.managers
 				// than to the adjacent page.
 				else
 				{
-					//TODO: min?
-					if (_throwReachedMaximumScrollPosition && (_throwFinalVSP < maxVSP || _throwFinalHSP < maxHSP))
-					{
-						needRethrow = true;
-					}
-					
 					if (_throwFinalVSP > maxVSP || _throwFinalVSP < minVSP ||
 						_throwFinalHSP > maxHSP || _throwFinalHSP < minHSP)
 					{
