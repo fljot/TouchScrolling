@@ -616,6 +616,7 @@ package com.inreflected.ui.managers
 			viewport.removeEventListener(Event.RESIZE, viewport_resizeHandler);
 			viewport.removeEventListener(PropertyChangeEvent.PROPERTY_CHANGE, viewport_propertyChangeHandler);
 			viewport.removeEventListener(FlexEvent.UPDATE_COMPLETE, handleSizeChangeOnUpdateComplete);
+			viewport.removeEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
 		}
 		
 		
@@ -1943,6 +1944,11 @@ package com.inreflected.ui.managers
 				// scroll ranges and snap the scroll position per the new viewport size.
 				viewport.addEventListener(FlexEvent.UPDATE_COMPLETE, handleSizeChangeOnUpdateComplete);
 			}
+			else if (event)
+			{
+				// Delay resize handling to ensure both width and height are set to new values
+				viewport.addEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
+			}
 			else
 			{
 				handleViewportSizeChange();
@@ -1970,7 +1976,8 @@ package com.inreflected.ui.managers
 						}
 						else
 						{
-							handleViewportSizeChange();
+							// Delay resize handling to ensure both width and height are set to new values
+							viewport.addEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
 						}
 						break;
 				}
@@ -1983,11 +1990,8 @@ package com.inreflected.ui.managers
 		 */
 		private function handleSizeChangeOnUpdateComplete(event:Event):void
 		{
-			if (event && event is FlexEvent)
-			{
-				viewport.removeEventListener(FlexEvent.UPDATE_COMPLETE, handleSizeChangeOnUpdateComplete);
-				handleViewportSizeChange();
-			}
+			viewport.removeEventListener(event.type, handleSizeChangeOnUpdateComplete);
+			handleViewportSizeChange();
 		}
 	}
 }
