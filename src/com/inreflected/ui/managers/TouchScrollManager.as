@@ -250,7 +250,6 @@ package com.inreflected.ui.managers
 		//----------------------------------
 		// Flags 
 		//----------------------------------
-		protected var _inTouchInteraction:Boolean;
 		protected var _dragScrollPending:Boolean;
 		protected var _preventGestureReset:Boolean;
 		
@@ -425,6 +424,13 @@ package com.inreflected.ui.managers
 		public function get canScrollVertically():Boolean
 		{
 			return _canScrollVertically;
+		}
+		
+		
+		protected var _inTouchInteraction:Boolean;
+		public function get inTouchInteraction():Boolean
+		{
+			return _inTouchInteraction;
 		}
 		
 		
@@ -1437,7 +1443,7 @@ package com.inreflected.ui.managers
 					}
 				}
 			}
-			else if (!_inTouchInteraction)
+			else if (!inTouchInteraction)
 			{
 				// No touch interaction is in effect, but the content may be sitting at
 				// a scroll position that is now invalid (due to viewport size properties change). 
@@ -1658,7 +1664,7 @@ package com.inreflected.ui.managers
 			
 			// Since we may have multitouch, this condition helps to call
 			// startScrollWatch() only once per touch interaction session.
-			if (!_inTouchInteraction)
+			if (!inTouchInteraction)
 			{
 				startScrollWatch();
 			}
@@ -1711,7 +1717,7 @@ package com.inreflected.ui.managers
 						
 						// Since we may have multitouch, this condition helps to call
 						// startScrollWatch() only once per touch interaction session.
-						if (!_inTouchInteraction)
+						if (!inTouchInteraction)
 						{
 							startScrollWatch();
 						}
