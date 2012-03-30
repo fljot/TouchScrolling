@@ -1,17 +1,15 @@
 package views
 {
 	import model.ExamplesModel;
-
 	import spark.components.Button;
 	import spark.components.Group;
+	import spark.components.Scroller;
 	import spark.components.View;
 	import spark.events.ViewNavigatorEvent;
 	import spark.layouts.VerticalLayout;
-
 	import mx.core.FlexGlobals;
 	import mx.events.FlexEvent;
 	import mx.events.ResizeEvent;
-
 	import flash.display.DisplayObject;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
@@ -107,7 +105,15 @@ package views
 		
 		protected function onResize(width:Number, height:Number):void
 		{
-			
+			if (this.hasOwnProperty("scroller"))
+			{
+				var scroller:Scroller = this["scroller"] as Scroller;
+				if (scroller && scroller.viewport)
+				{
+					scroller.viewport.horizontalScrollPosition = 0;
+					scroller.viewport.verticalScrollPosition = 0;
+				}
+			}
 		}
 		
 		
