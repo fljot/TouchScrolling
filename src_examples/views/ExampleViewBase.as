@@ -1,5 +1,8 @@
 package views
 {
+	import flash.events.TimerEvent;
+	import flash.utils.Timer;
+	import flash.utils.setTimeout;
 	import model.ExamplesModel;
 	import spark.components.Button;
 	import spark.components.Group;
@@ -30,6 +33,7 @@ package views
 		
 		[Bindable]
 		protected var dataModel:ExamplesModel;
+		private var resizeTimer:Timer;
 		
 		
 		public function ExampleViewBase()
@@ -51,6 +55,9 @@ package views
 				demoButton.label = "Back to demo";
 				actionContent = [demoButton];
 			}
+			
+			resizeTimer = new Timer(10, 1);
+			resizeTimer.addEventListener(TimerEvent.TIMER, resizeTimerHandler);
 			
 			addEventListener(ResizeEvent.RESIZE, resizeHandler);
 			addEventListener(FlexEvent.INITIALIZE, initializeHandler);
@@ -170,6 +177,14 @@ package views
 		
 		
 		private function resizeHandler(event:ResizeEvent):void
+		{
+			// because on iPad stage.stageWidth/stageHeight still gives wrong values for some reason
+			resizeTimer.reset();
+			resizeTimer.start();
+		}
+
+
+		private function resizeTimerHandler(event:TimerEvent):void
 		{
 			onResize(width, height);
 		}
