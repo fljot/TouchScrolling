@@ -3,6 +3,7 @@
     xmlns:s="library://ns.adobe.com/flex/spark"
 	xmlns:mx="library://ns.adobe.com/flex/mx"
 	xmlns:views="views.*"
+	implements="com.inreflected.ui.managers.supportClasses.ITouchScrollSnappingDelegate"
 	>
 	
 	<fx:Script>
@@ -32,7 +33,7 @@
 				
 				touchScroller = new TouchScroller();
 				touchScroller.touchScrollManager.allwaysBounceHorizontal = false;
-				touchScroller.touchScrollManager.snappingFunction = snapTo;			
+				touchScroller.touchScrollManager.snappingDelegate = this;			
 				app.parent.addChildAt(touchScroller, 0);
 				
 				tiledGroup = new TiledGroup();
@@ -46,7 +47,7 @@
 				maxPullSlider.value = TouchScrollManager.MAX_PULL_FACTOR;
 				maxBounceSlider.value = TouchScrollManager.MAX_OVERSHOOT_FACTOR;
 				frictionFactorSlider.value = touchScroller.touchScrollManager.frictionFactor;
-				snappingCheckBox.selected = (touchScroller.touchScrollManager.snappingFunction != null);
+				snappingCheckBox.selected = (touchScroller.touchScrollManager.snappingDelegate != null);
 			}
 			
 			
@@ -67,25 +68,6 @@
 			{
 				tiledGroup.cellWidth = tiledGroup.width;
 				tiledGroup.cellHeight = LIST_ITEM_HEIGHT;
-			}
-			
-			
-			private function snapTo(position:Number, propName:String):Number
-			{
-				// Resulting position should be bounds of touchScroller.touchScrollManager.scrollBounds
-				// So for custom snapping (with spaces in the beginning/end) there are two options:
-				// 1) set scrollBounds manually (min values CAN be negative)
-				// 2) make measuredBounds calculated properly via having custom layout for your viewport
-				
-				if (propName == TouchScrollManager.VERTICAL_SCROLL_POSITION)
-				{
-					// Condition not to have any empty space at the bottom
-					if (position < touchScroller.touchScrollManager.scrollBounds.bottom)
-					{
-						position = Math.round(position / LIST_ITEM_HEIGHT) * LIST_ITEM_HEIGHT;
-					}
-				}
-				return position;
 			}
 			
 				
@@ -136,8 +118,33 @@
 				else
 				if (event.target == snappingCheckBox)
 				{
-					touchScroller.touchScrollManager.snappingFunction = snappingCheckBox.selected ? snapTo : null;
+					touchScroller.touchScrollManager.snappingDelegate = snappingCheckBox.selected ? this : null;
 				}
+			}
+			
+			
+			public function getSnappedPosition(position:Number, propertyName:String):Number
+			{
+				// Resulting position should be bounds of touchScroller.touchScrollManager.scrollBounds
+				// So for custom snapping (with spaces in the beginning/end) there are two options:
+				// 1) set scrollBounds manually (min values CAN be negative)
+				// 2) make measuredBounds calculated properly via having custom layout for your viewport
+				
+				if (propertyName == TouchScrollManager.VERTICAL_SCROLL_POSITION)
+				{
+					// Condition not to have any empty space at the bottom
+					if (position < touchScroller.touchScrollManager.scrollBounds.bottom)
+					{
+						position = Math.round(position / LIST_ITEM_HEIGHT) * LIST_ITEM_HEIGHT;
+					}
+				}
+				return position;
+			}
+			
+			
+			public function getSnappedPositionOnResize(position:Number, propertyName:String, prevViewportSize:Number):Number
+			{
+				return position;
 			}
 		]]>
 	</fx:Script>

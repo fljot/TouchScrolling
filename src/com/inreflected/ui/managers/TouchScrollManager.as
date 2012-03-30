@@ -1,5 +1,6 @@
 package com.inreflected.ui.managers 
 {
+	import com.inreflected.ui.managers.supportClasses.ITouchScrollSnappingDelegate;
 	import com.inreflected.core.IDisposable;
 	import com.inreflected.core.IViewport;
 	import com.inreflected.ui.managers.supportClasses.ThrowEffect;
@@ -155,7 +156,7 @@ package com.inreflected.ui.managers
 		 */
 		public var directionalLock:Boolean;
 		
-		public var snappingFunction:Function;
+		public var snappingDelegate:ITouchScrollSnappingDelegate;
 		
 		
 		//----------------------------------
@@ -368,13 +369,9 @@ package com.inreflected.ui.managers
 			
 			stop();
 			
-			if (pagingEnabled)
+			if (pagingEnabled && viewport)
 			{
-				determinePageScrollPositions();
-			}
-			else
-			{
-				_currentPageHSP = _currentPageVSP = NaN;
+				snapContentScrollPosition();
 			}
 		}
 		
@@ -526,6 +523,7 @@ package com.inreflected.ui.managers
 				_throwEffect.target = null;
 				_throwEffect = null;
 			}
+			snappingDelegate = null;
 		}
 		
 		
@@ -986,7 +984,7 @@ package com.inreflected.ui.managers
 	        
 	        // In snapping mode, we need to ensure that the final throw position is snapped appropriately.
 //	        _throwEffect.finalPositionFilterFunction = snappingFunction == null ? null : getSnappedPosition; 
-	        _throwEffect.finalPositionFilterFunction = snappingFunction; 
+	        _throwEffect.finalPositionFilterFunction = snappingDelegate ? snappingDelegate.getSnappedPosition : null; 
 	        
 	        if (_throwEffect.setup())
 	        {
@@ -1252,6 +1250,10 @@ package com.inreflected.ui.managers
 				}
 				
 				viewport.horizontalScrollPosition = getSnappedPosition(pos, HORIZONTAL_SCROLL_POSITION);
+				if (pagingEnabled)
+				{
+					_currentPageHSP = viewport.horizontalScrollPosition;
+				}
 			}
 			if (snapVertical && viewport.contentHeight > 0)
 			{
@@ -1268,6 +1270,10 @@ package com.inreflected.ui.managers
 				}
 				
 				viewport.verticalScrollPosition = getSnappedPosition(pos, VERTICAL_SCROLL_POSITION);
+				if (pagingEnabled)
+				{
+					_currentPageVSP = viewport.verticalScrollPosition;
+				}
 			}
 		}
 		
@@ -1283,7 +1289,7 @@ package com.inreflected.ui.managers
 			var viewportWidth:Number = isNaN(viewport.width) ? 0 : viewport.width;
 			var viewportHeight:Number = isNaN(viewport.height) ? 0 : viewport.height;
 			
-			if (pagingEnabled && snappingFunction == null)
+			if (pagingEnabled && !snappingDelegate)
 			{
 				// If we're in paging mode and no snapping is enabled, then we must snap
 				// the position to the beginning of a page.  i.e. a multiple of the 
@@ -1302,9 +1308,9 @@ package com.inreflected.ui.managers
 					//TODO: Is it neccesary to clip value here or in snapContentScrollPositions() is enough?
 				}
 			}
-			else if (snappingFunction != null)
+			else if (snappingDelegate)
 			{
-				position = snappingFunction(position, propertyName);
+				position = snappingDelegate.getSnappedPosition(position, propertyName);
 			}
 			
 			return Math.round(position);
@@ -1372,22 +1378,15 @@ package com.inreflected.ui.managers
 				var needRethrow:Boolean;
 				
 				// See whether we possibly need to re-throw because the final snapped position is
-				// no longer snapped.  This can occur when the snapped position was estimated due to virtual
-				// layout, and the actual snapped position (i.e. once the relevent elements have been measured)
-				// turns out to be different.
-				// We also do this when pageScrolling is enabled to make sure we snap to a valid page position
-				// after an orientation change - since an orientation change necessarily moves all the page
-				// boundaries.
-				if (pagingEnabled || snappingFunction != null)
+				// no longer snapped.
+				if (pagingEnabled || snappingDelegate)
 				{
-					// NOTE: a lighter-weight way of doing this would be to retain the element
-					// at the end of the throw and see whether its bounds have changed.
-					if (canScrollHorizontally && getSnappedPosition(_throwFinalHSP, HORIZONTAL_SCROLL_POSITION) != _throwFinalHSP)
+					if (canScrollVertically && getSnappedPosition(_throwFinalVSP, VERTICAL_SCROLL_POSITION) != _throwFinalVSP)
 					{
 						needRethrow = true;
 					}
-				    
-					if (canScrollVertically && getSnappedPosition(_throwFinalVSP, VERTICAL_SCROLL_POSITION) != _throwFinalVSP)
+				    else
+					if (canScrollHorizontally && getSnappedPosition(_throwFinalHSP, HORIZONTAL_SCROLL_POSITION) != _throwFinalHSP)
 					{
 						needRethrow = true;
 					}
@@ -1451,20 +1450,24 @@ package com.inreflected.ui.managers
 				// The most likely reason we get here is that the device orientation changed
 				// while the content is stationary (i.e. not in an animated throw).
 				
-				var snapElementIndex:int = -1;
 				if (_prevViewportWidth != viewportWidth || _prevViewportHeight != viewportHeight)
 				{
-					// The viewport size has changed (most likely due to device orientation change)
+					// The viewport size has changed
 					
-					if (pagingEnabled && snappingFunction == null)
+					var snapElementIndex:int = -1;
+					if (pagingEnabled && !snappingDelegate)
 					{
-//						// Paging without item snapping.  We want to snap to the same page, as
-//						// long as the number of pages is the same.
-//						// The number of pages being different indicates that the relationship
-//						// between pages and content is unknown, and it makes no sense to try and
-//						// retain the same page.
-						// FIXME: !!! it's unclear when to set _prevHorizontalPageCount and _prevVerticalPageCount
-						if (true || _prevHorizontalPageCount == getCurrentPageCount(HORIZONTAL_SCROLL_POSITION))
+						// Paging without item snapping.  We want to snap to the same page, as
+						// long as the number of pages is the same.
+						// The number of pages being different indicates that the relationship
+						// between pages and content is unknown, and it makes no sense to try and
+						// retain the same page.
+						var numPages:uint;
+						
+						//FIXME: fix conditions and formulas for unlimited scrolling
+						
+						numPages = getCurrentPageCount(HORIZONTAL_SCROLL_POSITION);
+						if (_prevHorizontalPageCount == numPages)
 						{
 							if (_prevViewportWidth != viewportWidth && _prevViewportWidth > 0)
 							{
@@ -1473,7 +1476,13 @@ package com.inreflected.ui.managers
 								_currentPageHSP = viewport.horizontalScrollPosition;
 							}
 						}
-						if (true || _prevVerticalPageCount == getCurrentPageCount(VERTICAL_SCROLL_POSITION))
+						else
+						{
+							_prevHorizontalPageCount = numPages;
+						}
+						
+						numPages = getCurrentPageCount(VERTICAL_SCROLL_POSITION);
+						if (_prevVerticalPageCount == numPages)
 						{
 							if (_prevViewportHeight != viewportHeight && _prevViewportHeight > 0)
 							{
@@ -1482,20 +1491,32 @@ package com.inreflected.ui.managers
 								_currentPageVSP = viewport.verticalScrollPosition;
 							}
 						}
+						else
+						{
+							_prevVerticalPageCount = numPages;
+						}
 					}
-					if (pagingEnabled && snappingFunction != null)
+					else if (pagingEnabled && snappingDelegate)
 					{
-						//TODO
+						if (_prevViewportWidth > 0)
+						{
+							viewport.horizontalScrollPosition = snappingDelegate.getSnappedPositionOnResize(
+								viewport.horizontalScrollPosition, HORIZONTAL_SCROLL_POSITION, _prevViewportWidth);
+						}
+						if (_prevViewportHeight > 0)
+						{
+							viewport.verticalScrollPosition = snappingDelegate.getSnappedPositionOnResize(
+								viewport.verticalScrollPosition, VERTICAL_SCROLL_POSITION, _prevViewportHeight);
+						}
+					}
+					else if (!pagingEnabled && snappingDelegate)
+					{
+						// Do nothing since we don't care much about precise item snapping
+						// for non-paging mode
 					}
 				}
 				
 				snapContentScrollPosition();
-				
-				//new
-				if (pagingEnabled)
-				{
-					determinePageScrollPositions();
-				}
 			}
 			
 			_prevViewportWidth = viewportWidth;
@@ -1520,7 +1541,7 @@ package com.inreflected.ui.managers
 			
 			_measuredScrollBounds.width = viewport.contentWidth > viewportWidth ?
 				viewport.contentWidth - viewportWidth : 0;
-			if (pagingEnabled && snappingFunction == null && viewportWidth > 0 && _measuredScrollBounds.width > 0)
+			if (pagingEnabled && !snappingDelegate && viewportWidth > 0 && _measuredScrollBounds.width > 0)
 			{
 				// If the content height isn't an exact multiple of the viewport height,
 				// then we make sure the max scroll position allows for a full page (including
@@ -1533,7 +1554,7 @@ package com.inreflected.ui.managers
 			
 			_measuredScrollBounds.height = viewport.contentHeight > viewportHeight ?
 				viewport.contentHeight - viewportHeight : 0;
-			if (pagingEnabled && snappingFunction == null && viewportHeight > 0 && _measuredScrollBounds.height > 0)
+			if (pagingEnabled && !snappingDelegate && viewportHeight > 0 && _measuredScrollBounds.height > 0)
 			{
 				// If the content height isn't an exact multiple of the viewport height,
 				// then we make sure the max scroll position allows for a full page (including
@@ -1544,6 +1565,7 @@ package com.inreflected.ui.managers
 				}
 			}
 			
+			// TODO: another method in snappingDelegate?
 			// We can't pre-calculate exact bounds for the case when snappignFunction is defined,
 			// so either be satifsfied with these calculations or set explicit scrollBounds.
 		}
@@ -1597,7 +1619,7 @@ package com.inreflected.ui.managers
 			else
 			{
 				// Snap to the current one
-				return currPageScrollPosition;
+				pagePosition = currPageScrollPosition;
 			}
 			
 			// Ensure the new page position is snapped appropriately
@@ -1607,23 +1629,11 @@ package com.inreflected.ui.managers
 		}
 		
 		
-		protected function determinePageScrollPositions():void
-		{
-			_currentPageHSP = viewport ? getSnappedPosition(viewport.horizontalScrollPosition, HORIZONTAL_SCROLL_POSITION) : 0;
-			_currentPageVSP = viewport ? getSnappedPosition(viewport.verticalScrollPosition, VERTICAL_SCROLL_POSITION) : 0;
-		}
-		
-		
 		protected function handleViewportSizeChange():void
 		{
 			// The content size has changed, so the current scroll
 			// position and/or any in-progress throw may need to be adjusted.
 			checkScrollPosition();
-			
-			if (pagingEnabled && (isNaN(_currentPageHSP) || isNaN(_currentPageVSP)))
-			{
-				determinePageScrollPositions();
-			}
 		}
 		
 		

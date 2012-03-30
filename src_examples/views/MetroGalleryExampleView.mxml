@@ -3,6 +3,7 @@
     xmlns:s="library://ns.adobe.com/flex/spark"
 	xmlns:mx="library://ns.adobe.com/flex/mx"
 	xmlns:views="views.*"
+	implements="com.inreflected.ui.managers.supportClasses.ITouchScrollSnappingDelegate"
 	>
 	
 	<fx:Script>
@@ -15,6 +16,8 @@
 			
 			private var touchScroller:TouchScroller;
 			private var tiledGroup:MetroGalleryGroup;
+			
+			private var pageSize:Number;
 
 
 			override protected function init():void
@@ -32,7 +35,7 @@
 				touchScroller = new TouchScroller();
 				touchScroller.touchScrollManager.allwaysBounceVertical = false;
 				touchScroller.touchScrollManager.pagingEnabled = true;
-				touchScroller.touchScrollManager.snappingFunction = snapTo;
+				touchScroller.touchScrollManager.snappingDelegate = this;
 				app.parent.addChildAt(touchScroller, 0);
 				
 				tiledGroup = new MetroGalleryGroup();
@@ -63,25 +66,11 @@
 			
 			protected function updateTiledGroupCells():void
 			{
-				tiledGroup.cellWidth = tiledGroup.width - 80;
-				tiledGroup.cellHeight = tiledGroup.height - 20;
-			}
-			
-			
-			private function snapTo(position:Number, propName:String):Number
-			{				
-				if (propName == TouchScrollManager.HORIZONTAL_SCROLL_POSITION)
-				{
-					// Condition not to have any empty space at the bottom
-					if (position < touchScroller.touchScrollManager.scrollBounds.right)
-					{
-						const NEAREST:uint = tiledGroup.width - 60;
-						position = Math.round(position / NEAREST) * NEAREST;
-						trace("snap to " + position);
-					}
-					trace("touchScroller.touchScrollManager.scrollBounds:", touchScroller.touchScrollManager.scrollBounds);
-				}
-				return position;
+				const visibleOffset:uint = 30;
+				pageSize = tiledGroup.width - visibleOffset;
+				tiledGroup.spacing = 50;
+				tiledGroup.cellWidth = pageSize - tiledGroup.spacing;
+				tiledGroup.cellHeight = tiledGroup.height;
 			}
 			
 				
@@ -129,6 +118,35 @@
 				{
 					touchScroller.touchScrollManager.frictionFactor = frictionFactorSlider.value;
 				}
+			}
+			
+			
+			public function getSnappedPosition(position:Number, propertyName:String):Number
+			{
+				if (propertyName == TouchScrollManager.HORIZONTAL_SCROLL_POSITION)
+				{
+					// Condition not to have any empty space at the bottom
+					if (position < touchScroller.touchScrollManager.scrollBounds.right)
+					{
+						const NEAREST:uint = tiledGroup.cellWidth + tiledGroup.spacing;
+						position = Math.round(position / NEAREST) * NEAREST;
+//						trace("snap to " + position);
+					}
+//					trace("touchScroller.touchScrollManager.scrollBounds:", touchScroller.touchScrollManager.scrollBounds);
+				}
+				return position;
+			}
+			
+			
+			public function getSnappedPositionOnResize(position:Number, propertyName:String, prevViewportSize:Number):Number
+			{
+				var scrollBounds:Rectangle = touchScroller.touchScrollManager.scrollBounds;
+				var minPos:Number = propertyName == TouchScrollManager.VERTICAL_SCROLL_POSITION ?
+					scrollBounds.top : scrollBounds.left;
+				var prevPageSize:Number = prevViewportSize - tiledGroup.spacing;
+				var pageIndex:uint = (position - minPos) / prevPageSize;
+				
+				return minPos + pageIndex * pageSize;
 			}
 		]]>
 	</fx:Script>

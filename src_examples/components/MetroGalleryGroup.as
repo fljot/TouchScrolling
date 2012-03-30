@@ -9,6 +9,8 @@ package components
 	 */
 	public class MetroGalleryGroup extends Group
 	{
+		public var spacing:int;
+		
 		protected var s:Sprite;
 		protected var tileColorsMatrix:Array = [];
 		
@@ -111,16 +113,13 @@ package components
 			var nc:uint = numCols;
 			var w:uint = cellWidth;
 			var h:uint = cellHeight;
-			var hPadding:uint = (width - w) >> 1;
-			var vPadding:uint = (height - h) >> 1;
-			const popOutWidth:uint = 20;
 			var g:Graphics = s.graphics;
 			g.clear();
 			
 			var color:uint;
 			var untypedColor:*;
-			var nextX:uint = hPadding;
-			var nextY:uint = vPadding;
+			var nextX:uint = 0;
+			var nextY:uint = 0;
 			for (var r:uint = 0; r < nr; r++)
 			{
 				if (!tileColorsMatrix[r])
@@ -144,13 +143,13 @@ package components
 					g.drawRect(nextX, nextY, w, h);
 					g.endFill();
 					
-					nextX = nextX + w + hPadding - popOutWidth;
+					nextX = nextX + w + spacing;
 				}
 			}
 			
 			// fill with transparent fill for full-size interactivity
 			g.beginFill(0, 0);
-			g.drawRect(0, 0, nextX + popOutWidth, height);
+			g.drawRect(0, 0, nextX - w - spacing + width, height);
 			g.endFill();			
 			
 			validateContentSize();
