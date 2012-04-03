@@ -1,50 +1,41 @@
 package com.inreflected.ui.touchScroll
 {
-	import com.inreflected.animation.PathsFollower;
-	import flash.events.Event;
-	import flash.events.IEventDispatcher;
-	import flash.geom.Point;
-	import flash.utils.getTimer;
 	import spark.effects.animation.Keyframe;
 	import spark.effects.animation.MotionPath;
 	import spark.effects.easing.IEaser;
 	import spark.effects.easing.Power;
-	import spark.effects.easing.Sine;
+
+	import com.inreflected.animation.PathsFollower;
+
+	import flash.events.Event;
+	import flash.events.IEventDispatcher;
+	import flash.geom.Point;
+	import flash.utils.getTimer;
 
 	/**
 	 * @author Pavel fljot
 	 */
 	public class ThrowEffect
-	{		
-		/**
-	     *  @private
-	     *  The duration of the overshoot effect when a throw "bounces" against the end of the list.
-	     */
-	    protected static const THROW_OVERSHOOT_TIME:int = 250;
+	{
 	    
 	    /**
 		 *  @private
-		 *  The duration of the settle effect when a throw "bounces" against the end of the list.
+		 *  The duration of the settle effect when a throw "bounces" against the end of the list
+		 *  or when we do snap effect (when throw velocity is zero).
 		 */
-		protected static const THROW_SETTLE_TIME:int = 300;//600
-	    
-		/**
-		 *  @private
-		 *  The exponent used in the easer function for the main part of the throw animation. 
-		 */
-		protected static const THROW_CURVE_EXPONENT:Number = 3.0;
+		protected static const THROW_SETTLE_TIME:int = 500;
 	    
 	    /**
-	     *  @private
-	     *  The exponent used in the easer function for the "overshoot" portion 
-	     *  of the throw animation.
-	     */
-	    protected static const OVERSHOOT_CURVE_EXPONENT:Number = 2.0;
+		 *  @private
+		 */
+		protected static const SETTLE_THROW_VELOCITY:Number = 5;
 		
 	    /**
 	     *  @private
+	     *  The velocity at which we treat throw motion as finished.
+	     *  1 px/frame = framerate/1000 px/ms
 	     */
-	    protected static const STOP_VELOCITY:Number = 0.01;//px per ms
+	    protected static const STOP_VELOCITY:Number = 0.02;//px per ms
 	    
 	    /**
 	     *  @private
@@ -345,15 +336,26 @@ package com.inreflected.ui.touchScroll
 		protected function calculateThrowEffectTime(velocity:Number, decelerationRate:Number):int
 		{
 			// This calculates the effect duration based on a deceleration factor that is applied evenly over time.
-			// We decay the velocity by the deceleration factor until it is less than 0.01/ms, which is rounded to zero pixels.
-			// We want to solve for "time" in this equasion: velocity*(decel^time)-0.01 = 0.
-			// Note that we are only calculating an effect duration here.  The actual curve of our throw velocity is determined by
-			// the exponential easing function we use between animation keyframes.
+			// We decay the velocity by the deceleration factor until it is less than STOP_VELOCIY px/ms,
+			// which is rounded to zero pixels.
+			// The exponential decay formula for the velocity is:
+			// V(t) = V0 * d^t, where:
+			// V0 is initial velocity;
+			// d is decelerationRate, a value a bit less then 1.
+			// We want to solve for "t" in this equasion: V0*d^t - Vstop = 0.
+			// d^T = Vstop/V0
+			// t/effect duration/ = T = log(Vstop/V0) / log(d)
+			
+			// The actual position formula is integral of V(t):
+			// S(t) = V0/log(d) * d^t + C, where C is some constant.
+			// S(t=0) must be 0, so C = -V0/log(d) and so position formula is:
+			// S(t) = V0/log(d) * (d^t - 1)
+			// so final position is S(t=T) = (Vstop - V0) / log(d)
 			
 			// The condition has pure mathematical purpose: not to have negative time.
 			var absVelocity:Number = velocity > 0 ? velocity : -velocity;
 			var time:int = absVelocity <= STOP_VELOCITY ? 0 : Math.log(STOP_VELOCITY / absVelocity) / Math.log(decelerationRate);
-
+			
 			return time;
 		}
 		
@@ -383,6 +385,7 @@ package com.inreflected.ui.touchScroll
 			var nowTime:Number = 0;
 			var effectTime:Number;
 			var alignedPosition:Number;
+			var decelerationRate:Number = this.decelerationRate;
 			
 			// First, we handle the case where the velocity is zero (finger wasn't significantly moving when lifted).
 			// Ordinarily, we do nothing in this case, but if the list is currently scrolled past its end (i.e. "pulled"),
@@ -404,7 +407,7 @@ package com.inreflected.ui.touchScroll
 					
 					//FIXME: why not alignedPosition and isSnapping = true?
 					
-					nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, position, new Power(0, THROW_CURVE_EXPONENT));
+					nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, position, new Expo(SETTLE_THROW_VELOCITY, STOP_VELOCITY));
 				}
 				else
 				{
@@ -420,7 +423,7 @@ package com.inreflected.ui.touchScroll
 						return null;
 					
 					isSnapping = true;
-					nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, alignedPosition, new Power(0, THROW_CURVE_EXPONENT));
+					nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, alignedPosition, new Expo(SETTLE_THROW_VELOCITY, STOP_VELOCITY));
 				}
 			}
 			
@@ -450,7 +453,7 @@ package com.inreflected.ui.touchScroll
 						
 						// so we want to minimize overshoot and effect time (but not totally)
 						// to have something more close to regular settle effect.
-						velocity *= 0.1;
+						decelerationRate *= 0.8;
 					}
 					
 					
@@ -463,28 +466,34 @@ package com.inreflected.ui.touchScroll
 							settlePosition = finalPositionFilterFunction(settlePosition, propertyName);
 						}
 						
-						var bounceDecelerationRate:Number = decelerationRate * 0.97;
-						var overshootTime:uint = calculateThrowEffectTime(velocity, bounceDecelerationRate);
-						if (overshootTime > THROW_OVERSHOOT_TIME)
+						if (!throwJustStartedBeyondBounds)
 						{
-							overshootTime = THROW_OVERSHOOT_TIME;
+							// Reduce decelerationFactor as velocity increases (to make overshoot
+							// visually relatively equal and quick).
+							decelerationRate *= 0.98 * Math.pow(0.998, velocity > 0 ? velocity : -velocity);
+						}
+						var overshootTime:uint = calculateThrowEffectTime(velocity, decelerationRate);
+						
+						var overshootPosition:Number = Math.round(position + (velocity - STOP_VELOCITY) / Math.log(decelerationRate));
+						
+						if (!throwJustStartedBeyondBounds)
+						{
+							// We want to limit overshootPosition only for the bounce, not "pull&throw"
+							
+							var maxOvershootDistance:Number = maxBounce * viewportSize;
+							var adjustedOvershootPosition:Number = Math.min(Math.max(minPosition - maxOvershootDistance, overshootPosition), maxPosition + maxOvershootDistance);
+							if (adjustedOvershootPosition != overshootPosition)
+							{
+								overshootPosition = adjustedOvershootPosition;
+								// Adjust decelerationFactor & time to keep motion curve correct
+								// (given current velocity and desired overshoot)
+								decelerationRate = Math.exp((STOP_VELOCITY - Math.abs(velocity)) / maxOvershootDistance);
+								overshootTime = calculateThrowEffectTime(velocity, decelerationRate);
+							}
 						}
 						
-						// OVERSHOOT_CURVE_EXPONENT is the default initial slope of the easer function we use for the overshoot.
-						// This calculation scales the y axis (distance) of the overshoot so the actual slope matches the velocity.
-						var overshootPosition:Number = Math.round(position - ((velocity / OVERSHOOT_CURVE_EXPONENT) * overshootTime));
-						
-						var maxOvershootDistance:Number = maxBounce * viewportSize;
-						if (!isNaN(effectTime))
-						{
-							// we don't want to limit overshootPosition since throw has started beyond edge
-							// basically it's just a pull, not bounce
-							overshootPosition = Math.min(Math.max(minPosition - maxOvershootDistance, overshootPosition), maxPosition + maxOvershootDistance);
-							//TODO: adjust time maybe?
-						}
-						
-						nowTime = addKeyframe(motionPath, nowTime + overshootTime, overshootPosition, new Power(0, OVERSHOOT_CURVE_EXPONENT));
-						nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, settlePosition, new Sine(0.25));
+						nowTime = addKeyframe(motionPath, nowTime + overshootTime, overshootPosition, new Expo(velocity, STOP_VELOCITY));
+						nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, settlePosition, new Power(0.1, 3));
 					}
 					
 					// Clear the velocity to indicate that the motion path is complete.
@@ -493,31 +502,20 @@ package com.inreflected.ui.touchScroll
 				else
 				{
 					// Here we're going to do a "normal" throw.
+					
 					effectTime = calculateThrowEffectTime(velocity, decelerationRate);
 					
-					var minVelocity:Number;
-					if (position < minPosition || position > maxPosition)
-					{
-						// The throw is starting beyond the end of the list.  We need to enforce a minimum velocity
-						// to make sure the throw makes it all the way back to the end (i.e. doesn't leave any blank area
-						// exposed) and does so within THROW_SETTLE_TIME.  THROW_SETTLE_TIME needs to be consistently
-						// adhered to in all cases where the tension of being beyond the end acts on the scroll position.
-						
-						// The minimum velocity is that which gets us back to the end position in exactly THROW_SETTLE_TIME milliseconds.
-						minVelocity = ((position - (position < minPosition ? minPosition : maxPosition)) /
-							THROW_SETTLE_TIME) * THROW_CURVE_EXPONENT;
-						if (Math.abs(velocity) < Math.abs(minVelocity))
-						{
-							velocity = minVelocity;
-							effectTime = THROW_SETTLE_TIME;
-						}
-					}
+					var finalPosition:Number = Math.round(position + (velocity - STOP_VELOCITY) / Math.log(decelerationRate));
 					
-					// The easer function we use is 1-((1-x)^THROW_CURVE_EXPONENT), which has an initial slope of THROW_CURVE_EXPONENT.
-					// The x axis is scaled according to the throw duration we calculated above, so now we need
-					// to determine the correct y-axis scaling (i.e. throw distance) such that the initial
-					// slope matches the specified throw velocity.
-					var finalPosition:Number = Math.round(position - ((velocity / THROW_CURVE_EXPONENT) * effectTime));
+					if ((position < minPosition && finalPosition < minPosition) ||
+						(position > maxPosition && finalPosition > maxPosition))
+					{
+						// The throw is starting beyond the edge of the list and the velocity
+						// is not high enough (so blank area would be exposed after throw).
+						// Treat it as zero velocity to have regular snapping effect.
+						velocity = 0;
+						return createThrowMotionPath(propertyName, velocity, position, minPosition, maxPosition, viewportSize);
+					}
 					
 					if (finalPosition < minPosition || finalPosition > maxPosition)
 					{
@@ -527,23 +525,18 @@ package com.inreflected.ui.touchScroll
 						// keyframe we add here will stop exactly at the end.  The subsequent loop iteration
 						// will add keyframes that describe the overshoot & settle behavior.
 						
-						var endPosition:Number = finalPosition < minPosition ? minPosition : maxPosition;
+						var edgePosition:Number = finalPosition < minPosition ? minPosition : maxPosition;
 						
-						// since easing function is f(t) = start + (final - start) * e(t)
-						// e(t) = Math.pow(1 - t/throwEffectTime, THROW_CURVE_EXPONENT) =OR= (1 - t/throwEffectTime)^THROW_CURVE_EXPONENT
-						// We want to solve for t when e(t) = finalPosition
-						// t = throwEffectTime*(1-(Math.pow(1-((endPosition-position)/(finalVSP-position)),1/THROW_CURVE_EXPONENT)));
-						var partialTime:Number = effectTime * (1 - (Math.pow(1 - ((endPosition - position) / (finalPosition - position)), 1 / THROW_CURVE_EXPONENT)));
+						//TODO: explanation comment
+						var partialTime:Number = Math.log((velocity + Math.log(decelerationRate)*(position - edgePosition))/velocity) / Math.log(decelerationRate);
 						if (partialTime != partialTime)//isNaN
 						{
-							// I experienced NaN (or some Infinity?) once
-							// some weird values combination endPosition, position, finalPosition
-							partialTime = effectTime;
+							throw new Error();
 						}
 						
-						// PartialExponentialCurve creates a portion of the throw easer curve, but scaled up to fill the
+						// PartialExpo creates a portion of the throw easer curve, but scaled up to fill the
 						// specified duration.
-						nowTime = addKeyframe(motionPath, nowTime + partialTime, endPosition, new PartialExponentialCurve(THROW_CURVE_EXPONENT, partialTime / effectTime));
+						nowTime = addKeyframe(motionPath, nowTime + partialTime, edgePosition, new PartialExpo(velocity, STOP_VELOCITY, partialTime / effectTime));
 						
 						// Set the position just past the end of the list for the next loop iteration.
 						if (finalPosition < minPosition)
@@ -553,15 +546,7 @@ package com.inreflected.ui.touchScroll
 						
 						// Set the velocity for the next loop iteration.  Make sure it matches the actual velocity in effect when the
 						// throw reaches the end of the list.
-						//
-						// The easer function we use for the throw is 1-((1-x)^b), the derivative of which is
-						// b*(1-x)^(b-1) where b = THROW_CURVE_EXPONENT
-						// (Flex team used some hardcoded coefficients formula)
-						// Since the slope of a curve function at any point x (i.e. f(x)) is the value of the derivative at x (i.e. f'(x)),
-						// we can use this to determine the velocity of the throw at the point it reached the beginning of the bounce.
-						var x:Number = partialTime / effectTime;
-						var y:Number = THROW_CURVE_EXPONENT * Math.pow(1 - x, THROW_CURVE_EXPONENT - 1); 
-						velocity = -y * (finalPosition - position) / effectTime;
+						velocity = velocity * Math.pow(decelerationRate, partialTime);
 					}
 					else
 					{
@@ -569,23 +554,9 @@ package com.inreflected.ui.touchScroll
 						// end of the list).  We create a single keyframe and clear the velocity to indicate that the
 						// motion path is complete.
 						
-						// Flex team also says:
-						// <quote>
-						// Note that we only use the first 62% of the actual deceleration curve, and stop the motion
-						// path at that point.  That's the point in time at which most throws animations get to within
-						// a single pixel of their final destination.  Since scrolling is done at whole pixel 
-						// boundaries, there's no point in letting the rest of the animation play out, and stopping it 
-						// allows us to release the mouse capture earlier for a better user experience.
-//	                    const CURVE_PORTION:Number = 0.62;
-//	                    nowTime = addKeyframe(
-//	                        motionPath, nowTime + (effectTime*CURVE_PORTION), finalPosition, 
-//	                        new PartialExponentialCurve(THROW_CURVE_EXPONENT, CURVE_PORTION));
-//	                    velocity = 0;
-						// </quote>
-						// but that's a bullshit because they still use incorrect double easing.
-						
 						if (isNaN(finalPosition))
 						{
+							// temporary for debug reasons. I experienced NaN once
 							throw new Error("");
 						}
 						if (finalPositionFilterFunction != null)
@@ -593,7 +564,7 @@ package com.inreflected.ui.touchScroll
 							finalPosition = finalPositionFilterFunction(finalPosition, propertyName);
 						}
 						
-						nowTime = addKeyframe(motionPath, nowTime + effectTime, finalPosition, new Power(0, THROW_CURVE_EXPONENT));
+						nowTime = addKeyframe(motionPath, nowTime + effectTime, finalPosition, new Expo(velocity, STOP_VELOCITY));
 						velocity = 0;
 					}
 				}
@@ -627,8 +598,12 @@ package com.inreflected.ui.touchScroll
 		private function target_enterFrameHandler(event:Event):void
 		{
 			var progress:Number = (getTimer() - _effectStartTime) / _duration;
-			_effectFollower.progress = progress < 1 ? progress : 1;
-			if (_effectFollower.progress == 1)
+			if (progress > 1)
+			{
+				progress = 1;
+			}
+			_effectFollower.progress = progress;
+			if (progress == 1)
 			{
 				stop();
 			}
@@ -636,7 +611,55 @@ package com.inreflected.ui.touchScroll
 	}
 }
 import spark.effects.easing.EaseInOutBase;
+import spark.effects.easing.IEaser;
 
+class Expo implements IEaser
+{		
+	private var k1:Number;
+	private var k2:Number;
+	
+	
+	public function Expo(v0:Number, vStop:Number = 0.01)
+	{
+		v0 = v0 < 0 ? -v0 : v0;
+		
+		k1 = vStop / v0;
+		k2 = 1 / (k1 - 1);
+	}
+	
+	
+	public function ease(fraction:Number):Number
+	{
+		return k2 * (Math.pow(k1, fraction) - 1);
+	}
+}
+
+
+    
+/**
+ *  @private
+ *  A custom ease-out-only easer class which animates along a specified 
+ *  portion of an exponential curve.  
+ */
+class PartialExpo extends Expo
+{
+    private var _xscale:Number;
+    private var _ymult:Number;
+    
+    
+    public function PartialExpo(v0:Number, vStop:Number, xscale:Number)
+    {
+        super(v0, vStop);
+        
+        _xscale = xscale;
+        _ymult = 1 / super.ease(_xscale);
+    }
+    
+    override public function ease(fraction:Number):Number
+    {
+        return _ymult * super.ease(fraction * _xscale); 
+    }
+}
     
 /**
  *  @private
