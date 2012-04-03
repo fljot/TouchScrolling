@@ -1886,8 +1886,8 @@ package com.inreflected.ui.managers
 			
 			addMouseEventHistory(dx, dy);
 			
-			_lastDirection.x = (canScrollHorizontally && _lastDragOffsetX != 0) ? (dx > _lastDragOffsetX ? 1 : -1) : 0;
-			_lastDirection.y = (canScrollVertically && _lastDragOffsetY != 0) ? (dy > _lastDragOffsetY ? 1 : -1) : 0;
+			_lastDirection.x = (canScrollHorizontally && _lastDragOffsetX != 0) ? (dx > 0 ? 1 : -1) : 0;
+			_lastDirection.y = (canScrollVertically && _lastDragOffsetY != 0) ? (dy > 0 ? 1 : -1) : 0;
 			
 			_dragScrollPending = true;
 			
