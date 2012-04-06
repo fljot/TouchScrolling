@@ -87,7 +87,7 @@ package com.inreflected.ui.touchScroll
 	     *  @private
 	     *  The rate of deceleration to apply to the velocity.
 	     */
-	    public var decelerationFactor:Number;
+	    public var decelerationRate:Number;
 		
 		public var pull:Boolean;
 		public var bounce:Boolean;
@@ -342,7 +342,7 @@ package com.inreflected.ui.touchScroll
 		/**
 		 *  @private
 		 */
-		protected function calculateThrowEffectTime(velocity:Number, decelerationFactor:Number):int
+		protected function calculateThrowEffectTime(velocity:Number, decelerationRate:Number):int
 		{
 			// This calculates the effect duration based on a deceleration factor that is applied evenly over time.
 			// We decay the velocity by the deceleration factor until it is less than 0.01/ms, which is rounded to zero pixels.
@@ -352,7 +352,7 @@ package com.inreflected.ui.touchScroll
 			
 			// The condition has pure mathematical purpose: not to have negative time.
 			var absVelocity:Number = velocity > 0 ? velocity : -velocity;
-			var time:int = absVelocity <= STOP_VELOCITY ? 0 : Math.log(STOP_VELOCITY / absVelocity) / Math.log(decelerationFactor);
+			var time:int = absVelocity <= STOP_VELOCITY ? 0 : Math.log(STOP_VELOCITY / absVelocity) / Math.log(decelerationRate);
 
 			return time;
 		}
@@ -463,8 +463,8 @@ package com.inreflected.ui.touchScroll
 							settlePosition = finalPositionFilterFunction(settlePosition, propertyName);
 						}
 						
-						var bounceDecelerationFactor:Number = decelerationFactor * 0.97;
-						var overshootTime:uint = calculateThrowEffectTime(velocity, bounceDecelerationFactor);
+						var bounceDecelerationRate:Number = decelerationRate * 0.97;
+						var overshootTime:uint = calculateThrowEffectTime(velocity, bounceDecelerationRate);
 						if (overshootTime > THROW_OVERSHOOT_TIME)
 						{
 							overshootTime = THROW_OVERSHOOT_TIME;
@@ -493,7 +493,7 @@ package com.inreflected.ui.touchScroll
 				else
 				{
 					// Here we're going to do a "normal" throw.
-					effectTime = calculateThrowEffectTime(velocity, decelerationFactor);
+					effectTime = calculateThrowEffectTime(velocity, decelerationRate);
 					
 					var minVelocity:Number;
 					if (position < minPosition || position > maxPosition)

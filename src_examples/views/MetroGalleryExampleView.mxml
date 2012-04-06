@@ -53,7 +53,7 @@ NB! With simple paging (without custom snapping) current page preserves automati
 				allwaysBounceVCheckBox.selected = touchScroller.touchScrollManager.allwaysBounceVertical;
 				maxPullSlider.value = TouchScrollManager.MAX_PULL_FACTOR;
 				maxBounceSlider.value = TouchScrollManager.MAX_OVERSHOOT_FACTOR;
-				frictionFactorSlider.value = touchScroller.touchScrollManager.frictionFactor;
+				decelerationRateSlider.value = touchScroller.touchScrollManager.decelerationRate;
 			}
 			
 			
@@ -120,9 +120,9 @@ NB! With simple paging (without custom snapping) current page preserves automati
 					touchScroller.touchScrollManager.maxBounce = maxBounceSlider.value;
 				}
 				else
-				if (event.target == frictionFactorSlider)
+				if (event.target == decelerationRateSlider)
 				{
-					touchScroller.touchScrollManager.frictionFactor = frictionFactorSlider.value;
+					touchScroller.touchScrollManager.decelerationRate = decelerationRateSlider.value;
 				}
 			}
 			
@@ -178,8 +178,8 @@ NB! With simple paging (without custom snapping) current page preserves automati
 				minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
 				change="onControlChange(event)"/>
 			
-			<s:Label text="frictionFactor"/>
-			<s:HSlider id="frictionFactorSlider"
+			<s:Label text="decelerationRate"/>
+			<s:HSlider id="decelerationRateSlider"
 				minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
 				change="onControlChange(event)"/>
 		</s:Group>

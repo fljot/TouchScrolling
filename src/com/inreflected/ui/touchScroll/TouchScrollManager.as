@@ -2,6 +2,7 @@ package com.inreflected.ui.touchScroll
 {
 	import com.inreflected.core.IDisposable;
 	import com.inreflected.core.IViewport;
+
 	import flash.display.DisplayObject;
 	import flash.display.DisplayObjectContainer;
 	import flash.display.InteractiveObject;
@@ -18,18 +19,17 @@ package com.inreflected.ui.touchScroll
 	import flash.utils.Timer;
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getTimer;
+
 	import mx.events.FlexEvent;
 	import mx.events.PropertyChangeEvent;
 	import mx.events.TouchInteractionEvent;
 	import mx.events.TouchInteractionReason;
+
 	import org.gestouch.core.GestureState;
 	import org.gestouch.events.GestureStateEvent;
 	import org.gestouch.events.PanGestureEvent;
 	import org.gestouch.gestures.Gesture;
 	import org.gestouch.gestures.PanGesture;
-
-
-
 
 
 	[Event(name="touchInteractionStarting", type="mx.events.TouchInteractionEvent")]
@@ -70,13 +70,7 @@ package com.inreflected.ui.touchScroll
 		 *  @private
 		 *  Minimum velocity needed to start a throw gesture, in pixels per millisecond.
 		 */
-		private static const MIN_START_VELOCITY:Number = 0.6 * Capabilities.screenDPI / 1000;
-		/**
-		 *  @private
-		 *  The amount of deceleration to apply to the velocity for each effect period
-		 *  For a faster deceleration, you can switch this to 0.990.
-		 */
-		private static const THROW_EFFECT_DECEL_FACTOR:Number = 0.998;	
+		private static const MIN_START_VELOCITY:Number = 0.6 * Capabilities.screenDPI / 1000;	
 		/**
 		 *  @private
 		 *  Weights to use when calculating velocity, giving the last velocity more of a weight 
@@ -119,10 +113,11 @@ package com.inreflected.ui.touchScroll
 		 */
 		public var bounceEnabled:Boolean = true;
 		/**
-		 *  The amount of deceleration to apply to the velocity for each effect period
-		 *  For a faster deceleration, you can switch this to 0.990.
+		 *  The amount of deceleration to apply to the velocity for each throw effect period.
+		 *  For a faster deceleration, you can switch this to TouchScrollDecelerationRate.FAST
+		 *  (which is equal to 0.990).
 		 */
-		public var frictionFactor:Number = THROW_EFFECT_DECEL_FACTOR;
+		public var decelerationRate:Number = TouchScrollDecelerationRate.NORMAL;
 		/**
 		 * A way to control pull tention/distance. Should be value between 0 and 1.
 		 * Setting this property to NaN produces default pull
@@ -940,7 +935,7 @@ package com.inreflected.ui.touchScroll
 			var maxHSP:Number = scrollBounds.right;
 			var maxVSP:Number = scrollBounds.bottom;
 			
-			var frictionFactor:Number = this.frictionFactor;
+			var decelerationRate:Number = this.decelerationRate;
 			
 			if (pagingEnabled)
 			{
@@ -960,7 +955,7 @@ package com.inreflected.ui.touchScroll
 				
 				// Flex team attenuates velocity here,
 				// but I think it's better to adjust friction to preserve correct starting velocity.
-				frictionFactor *= 0.98;
+				decelerationRate *= 0.98;
 	        }
 	
 	        _throwEffect.propertyNameX = canScrollHorizontally ? HORIZONTAL_SCROLL_POSITION : null;
@@ -973,7 +968,7 @@ package com.inreflected.ui.touchScroll
 	        _throwEffect.minPositionY = minVSP;
 	        _throwEffect.maxPositionX = maxHSP;
 	        _throwEffect.maxPositionY = maxVSP;
-	        _throwEffect.decelerationFactor = frictionFactor;
+	        _throwEffect.decelerationRate = decelerationRate;
 	        _throwEffect.viewportWidth = viewport.width;
 	        _throwEffect.viewportHeight = viewport.height;
 			_throwEffect.pull = (maxPull > 0 || maxPull != maxPull);
