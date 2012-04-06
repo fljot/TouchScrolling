@@ -1,21 +1,7 @@
-package com.inreflected.ui.managers 
+package com.inreflected.ui.touchScroll 
 {
-	import com.inreflected.ui.managers.supportClasses.ITouchScrollSnappingDelegate;
 	import com.inreflected.core.IDisposable;
 	import com.inreflected.core.IViewport;
-	import com.inreflected.ui.managers.supportClasses.ThrowEffect;
-
-	import org.gestouch.core.GestureState;
-	import org.gestouch.events.GestureStateEvent;
-	import org.gestouch.events.PanGestureEvent;
-	import org.gestouch.gestures.Gesture;
-	import org.gestouch.gestures.PanGesture;
-
-	import mx.events.FlexEvent;
-	import mx.events.PropertyChangeEvent;
-	import mx.events.TouchInteractionEvent;
-	import mx.events.TouchInteractionReason;
-
 	import flash.display.DisplayObject;
 	import flash.display.DisplayObjectContainer;
 	import flash.display.InteractiveObject;
@@ -32,6 +18,18 @@ package com.inreflected.ui.managers
 	import flash.utils.Timer;
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getTimer;
+	import mx.events.FlexEvent;
+	import mx.events.PropertyChangeEvent;
+	import mx.events.TouchInteractionEvent;
+	import mx.events.TouchInteractionReason;
+	import org.gestouch.core.GestureState;
+	import org.gestouch.events.GestureStateEvent;
+	import org.gestouch.events.PanGestureEvent;
+	import org.gestouch.gestures.Gesture;
+	import org.gestouch.gestures.PanGesture;
+
+
+
 
 
 	[Event(name="touchInteractionStarting", type="mx.events.TouchInteractionEvent")]
@@ -78,7 +76,7 @@ package com.inreflected.ui.managers
 		 *  The amount of deceleration to apply to the velocity for each effect period
 		 *  For a faster deceleration, you can switch this to 0.990.
 		 */
-		private static const THROW_EFFECT_DECEL_FACTOR:Number = 0.995;	
+		private static const THROW_EFFECT_DECEL_FACTOR:Number = 0.998;	
 		/**
 		 *  @private
 		 *  Weights to use when calculating velocity, giving the last velocity more of a weight 

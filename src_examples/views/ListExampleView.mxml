@@ -10,16 +10,17 @@ TODO: add interactive elements into viewport to demonstrate their deselection on
     xmlns:s="library://ns.adobe.com/flex/spark"
 	xmlns:mx="library://ns.adobe.com/flex/mx"
 	xmlns:views="views.*"
-	implements="com.inreflected.ui.managers.supportClasses.ITouchScrollSnappingDelegate"
+	implements="com.inreflected.ui.touchScroll.ITouchScrollSnappingDelegate"
 	>
 	
 	<fx:Script>
 		<![CDATA[
+			import com.inreflected.ui.touchScroll.TouchScrollManager;
+
 			import components.TiledGroup;
 			import components.TouchScroller;
 
-			import com.inreflected.ui.managers.TouchScrollManager;
-			
+
 			private static const LIST_ITEM_HEIGHT:uint = Capabilities.screenDPI / 2;
 			
 			private var touchScroller:TouchScroller;

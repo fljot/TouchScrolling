@@ -9,17 +9,17 @@ NB! With simple paging (without custom snapping) current page preserves automati
     xmlns:s="library://ns.adobe.com/flex/spark"
 	xmlns:mx="library://ns.adobe.com/flex/mx"
 	xmlns:views="views.*"
-	implements="com.inreflected.ui.managers.supportClasses.ITouchScrollSnappingDelegate"
+	implements="com.inreflected.ui.touchScroll.ITouchScrollSnappingDelegate"
 	>
 	
 	<fx:Script>
 		<![CDATA[
-			import components.TouchScroller;
-			import components.MetroGalleryGroup;
+			import com.inreflected.ui.touchScroll.TouchScrollManager;
 
-			import com.inreflected.ui.managers.TouchScrollManager;
-			
-			
+			import components.MetroGalleryGroup;
+			import components.TouchScroller;
+
+
 			private var touchScroller:TouchScroller;
 			private var tiledGroup:MetroGalleryGroup;
 			

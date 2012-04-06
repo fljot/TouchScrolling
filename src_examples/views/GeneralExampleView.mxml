@@ -10,12 +10,12 @@ General example that shows most of the API.
 	
 	<fx:Script>
 		<![CDATA[
+			import com.inreflected.ui.touchScroll.TouchScrollManager;
+
 			import components.TiledGroup;
 			import components.TouchScroller;
 
-			import com.inreflected.ui.managers.TouchScrollManager;
-			
-			
+
 			private var touchScroller:TouchScroller;
 			private var tiledGroup:TiledGroup;
 

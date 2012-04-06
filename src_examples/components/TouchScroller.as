@@ -1,7 +1,7 @@
 package components
 {
 	import com.inreflected.core.IViewport;
-	import com.inreflected.ui.managers.TouchScrollManager;
+	import com.inreflected.ui.touchScroll.TouchScrollManager;
 
 	import flash.display.DisplayObject;
 

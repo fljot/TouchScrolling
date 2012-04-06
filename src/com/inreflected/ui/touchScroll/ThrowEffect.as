@@ -1,4 +1,4 @@
-package com.inreflected.ui.managers.supportClasses
+package com.inreflected.ui.touchScroll
 {
 	import com.inreflected.animation.PathsFollower;
 	import flash.events.Event;
