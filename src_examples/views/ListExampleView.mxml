@@ -161,7 +161,7 @@ TODO: add interactive elements into viewport to demonstrate their deselection on
 		<s:Group id="settings">		
 			<s:Label text="height"/>
 			<s:HSlider id="heightSlider"
-				minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
+				minimum="1" maximum="120" stepSize="1" dataTipPrecision="0"
 				change="onControlChange(event)"/>
 			
 			<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
