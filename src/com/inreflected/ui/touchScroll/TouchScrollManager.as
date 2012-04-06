@@ -119,6 +119,16 @@ package com.inreflected.ui.touchScroll
 		 */
 		public var decelerationRate:Number = TouchScrollDecelerationRate.NORMAL;
 		/**
+		 * Minimum velocity needed to start a throw effect, in pixels per millisecond.
+		 * 
+		 * @default 0.6 inches/s
+		 */
+		public var minVelocity:Number = MIN_START_VELOCITY;
+		/**
+		 * Maximum velocity for a throw effect. Not limited by default.
+		 */
+		public var maxVelocity:Number;
+		/**
 		 * A way to control pull tention/distance. Should be value between 0 and 1.
 		 * Setting this property to NaN produces default pull
 		 * with maximum value of 0.4 (40% of viewport size).
@@ -1597,14 +1607,14 @@ package com.inreflected.ui.touchScroll
 			const stationaryOffsetThreshold:Number = viewportSize * 0.5;
 			
 			// Check both the throw velocity and the drag distance. If either exceeds our threholds, then we switch to the next page.
-			if (velocity < -MIN_START_VELOCITY || position >= currPageScrollPosition + stationaryOffsetThreshold)
+			if (velocity < -minVelocity || position >= currPageScrollPosition + stationaryOffsetThreshold)
 			{
 				// Go to the next page
 				// Set the new page scroll position so the throw effect animates the page into place
 				pagePosition = Math.min(currPageScrollPosition + viewportSize, maxSP);
 			}
 			else
-			if (velocity > MIN_START_VELOCITY || position <= currPageScrollPosition - stationaryOffsetThreshold)
+			if (velocity > minVelocity || position <= currPageScrollPosition - stationaryOffsetThreshold)
 			{
 				// Go to the previous page
 				pagePosition = Math.max(currPageScrollPosition - viewportSize, minSP);
@@ -1905,7 +1915,7 @@ package com.inreflected.ui.touchScroll
 			// calculate the velocity using a weighted average
 			var throwVelocity:Point = calculateThrowVelocity();
 			
-			if (throwVelocity.length < MIN_START_VELOCITY)
+			if (throwVelocity.length < minVelocity)
 			{
 				throwVelocity.x = 0;
 				throwVelocity.y = 0;
@@ -1917,15 +1927,19 @@ package com.inreflected.ui.touchScroll
         		var finalDragVel:Point = calculateFinalDragVelocity(100);
 				CONFIG::Debug
 				{
-					trace('finalDragVel: ' + (finalDragVel), finalDragVel.length, MIN_START_VELOCITY);
+					trace('finalDragVel: ' + (finalDragVel), finalDragVel.length, minVelocity);
 				}		
 				// If the gesture appears to have slowed or stopped prior to the mouse up,
 				// then force the velocity to zero.
 				// Compare the final 100ms of the drag to the minimum value.
-				if (finalDragVel.length <= MIN_START_VELOCITY)
+				if (finalDragVel.length <= minVelocity)
 				{
 					throwVelocity.x = 0;
 					throwVelocity.y = 0;
+				}
+				else if (maxVelocity == maxVelocity && maxVelocity > minVelocity)
+				{
+					throwVelocity.normalize(maxVelocity);
 				}
 			}
 			
