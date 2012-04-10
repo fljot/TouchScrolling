@@ -23,7 +23,7 @@ package com.inreflected.ui.touchScroll
 		 *  The duration of the settle effect when a throw "bounces" against the end of the list
 		 *  or when we do snap effect (when throw velocity is zero).
 		 */
-		protected static const THROW_SETTLE_TIME:int = 500;
+		protected static const THROW_SETTLE_TIME:int = 600;
 	    
 	    /**
 		 *  @private
@@ -453,7 +453,7 @@ package com.inreflected.ui.touchScroll
 						
 						// so we want to minimize overshoot and effect time (but not totally)
 						// to have something more close to regular settle effect.
-						decelerationRate *= 0.8;
+						decelerationRate *= 0.9;
 					}
 					
 					
@@ -493,7 +493,7 @@ package com.inreflected.ui.touchScroll
 						}
 						
 						nowTime = addKeyframe(motionPath, nowTime + overshootTime, overshootPosition, new Expo(velocity, STOP_VELOCITY));
-						nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, settlePosition, new Power(0.1, 3));
+						nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, settlePosition, new Expo(SETTLE_THROW_VELOCITY, STOP_VELOCITY));
 					}
 					
 					// Clear the velocity to indicate that the motion path is complete.
