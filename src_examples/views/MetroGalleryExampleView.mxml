@@ -1,20 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+Paging with custom snapping example. Shows:
+* how to combine paging with custom snapping
+* how to preserve current page on viewport resize (device orientation change) in this case
+NB! With simple paging (without custom snapping) current page preserves automatically on resize.
+-->
 <views:ExampleViewBase xmlns:fx="http://ns.adobe.com/mxml/2009"
     xmlns:s="library://ns.adobe.com/flex/spark"
 	xmlns:mx="library://ns.adobe.com/flex/mx"
 	xmlns:views="views.*"
+	implements="com.inreflected.ui.touchScroll.ITouchScrollSnappingDelegate"
 	>
 	
 	<fx:Script>
 		<![CDATA[
-			import components.TouchScroller;
-			import components.MetroGalleryGroup;
+			import com.inreflected.ui.touchScroll.TouchScrollManager;
 
-			import com.inreflected.ui.managers.TouchScrollManager;
-			
-			
+			import components.MetroGalleryGroup;
+			import components.TouchScroller;
+
+
 			private var touchScroller:TouchScroller;
 			private var tiledGroup:MetroGalleryGroup;
+			
+			private var pageSize:Number;
 
 
 			override protected function init():void
@@ -32,7 +41,7 @@
 				touchScroller = new TouchScroller();
 				touchScroller.touchScrollManager.allwaysBounceVertical = false;
 				touchScroller.touchScrollManager.pagingEnabled = true;
-				touchScroller.touchScrollManager.snappingFunction = snapTo;
+				touchScroller.touchScrollManager.snappingDelegate = this;
 				app.parent.addChildAt(touchScroller, 0);
 				
 				tiledGroup = new MetroGalleryGroup();
@@ -44,7 +53,7 @@
 				allwaysBounceVCheckBox.selected = touchScroller.touchScrollManager.allwaysBounceVertical;
 				maxPullSlider.value = TouchScrollManager.MAX_PULL_FACTOR;
 				maxBounceSlider.value = TouchScrollManager.MAX_OVERSHOOT_FACTOR;
-				frictionFactorSlider.value = touchScroller.touchScrollManager.frictionFactor;
+				decelerationRateSlider.value = touchScroller.touchScrollManager.decelerationRate;
 			}
 			
 			
@@ -63,25 +72,11 @@
 			
 			protected function updateTiledGroupCells():void
 			{
-				tiledGroup.cellWidth = tiledGroup.width - 80;
-				tiledGroup.cellHeight = tiledGroup.height - 20;
-			}
-			
-			
-			private function snapTo(position:Number, propName:String):Number
-			{				
-				if (propName == TouchScrollManager.HORIZONTAL_SCROLL_POSITION)
-				{
-					// Condition not to have any empty space at the bottom
-					if (position < touchScroller.touchScrollManager.scrollBounds.right)
-					{
-						const NEAREST:uint = tiledGroup.width - 60;
-						position = Math.round(position / NEAREST) * NEAREST;
-						trace("snap to " + position);
-					}
-					trace("touchScroller.touchScrollManager.scrollBounds:", touchScroller.touchScrollManager.scrollBounds);
-				}
-				return position;
+				const visibleOffset:uint = 30;
+				pageSize = tiledGroup.width - visibleOffset;
+				tiledGroup.spacing = 50;
+				tiledGroup.cellWidth = pageSize - tiledGroup.spacing;
+				tiledGroup.cellHeight = tiledGroup.height;
 			}
 			
 				
@@ -125,38 +120,69 @@
 					touchScroller.touchScrollManager.maxBounce = maxBounceSlider.value;
 				}
 				else
-				if (event.target == frictionFactorSlider)
+				if (event.target == decelerationRateSlider)
 				{
-					touchScroller.touchScrollManager.frictionFactor = frictionFactorSlider.value;
+					touchScroller.touchScrollManager.decelerationRate = decelerationRateSlider.value;
 				}
+			}
+			
+			
+			public function getSnappedPosition(position:Number, propertyName:String):Number
+			{
+				if (propertyName == TouchScrollManager.HORIZONTAL_SCROLL_POSITION)
+				{
+					// Condition not to have any empty space at the bottom
+					if (position < touchScroller.touchScrollManager.scrollBounds.right)
+					{
+						const NEAREST:uint = tiledGroup.cellWidth + tiledGroup.spacing;
+						position = Math.round(position / NEAREST) * NEAREST;
+//						trace("snap to " + position);
+					}
+//					trace("touchScroller.touchScrollManager.scrollBounds:", touchScroller.touchScrollManager.scrollBounds);
+				}
+				return position;
+			}
+			
+			
+			public function getSnappedPositionOnResize(position:Number, propertyName:String, prevViewportSize:Number):Number
+			{
+				var scrollBounds:Rectangle = touchScroller.touchScrollManager.scrollBounds;
+				var minPos:Number = propertyName == TouchScrollManager.VERTICAL_SCROLL_POSITION ?
+					scrollBounds.top : scrollBounds.left;
+				var prevPageSize:Number = prevViewportSize - tiledGroup.spacing;
+				var pageIndex:uint = (position - minPos) / prevPageSize;
+				
+				return minPos + pageIndex * pageSize;
 			}
 		]]>
 	</fx:Script>
 	
-	<s:Group id="settings">	
-		<s:Label text="width"/>
-		<s:HSlider id="widthSlider"
-			minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
-			change="onControlChange(event)"/>
-		
-		<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
-		<s:CheckBox id="allwaysBounceHCheckBox" label="allwaysBounceHorizontal" change="onControlChange(event)" />
-		<s:CheckBox id="allwaysBounceVCheckBox" label="allwaysBounceVertical" change="onControlChange(event)" />
-		
-		<s:Label text="maxPull"/>
-		<s:HSlider id="maxPullSlider"
-			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
-			change="onControlChange(event)"/>
-		
-		<s:Label text="maxBounce"/>
-		<s:HSlider id="maxBounceSlider"
-			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
-			change="onControlChange(event)"/>
-		
-		<s:Label text="frictionFactor"/>
-		<s:HSlider id="frictionFactorSlider"
-			minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
-			change="onControlChange(event)"/>
-	</s:Group>
+	<s:Scroller id="scroller" width="100%" height="100%">
+		<s:Group id="settings">	
+			<s:Label text="width"/>
+			<s:HSlider id="widthSlider"
+				minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
+				change="onControlChange(event)"/>
+			
+			<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
+			<s:CheckBox id="allwaysBounceHCheckBox" label="allwaysBounceHorizontal" change="onControlChange(event)" />
+			<s:CheckBox id="allwaysBounceVCheckBox" label="allwaysBounceVertical" change="onControlChange(event)" />
+			
+			<s:Label text="maxPull"/>
+			<s:HSlider id="maxPullSlider"
+				minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+				change="onControlChange(event)"/>
+			
+			<s:Label text="maxBounce"/>
+			<s:HSlider id="maxBounceSlider"
+				minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+				change="onControlChange(event)"/>
+			
+			<s:Label text="decelerationRate"/>
+			<s:HSlider id="decelerationRateSlider"
+				minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
+				change="onControlChange(event)"/>
+		</s:Group>
+	</s:Scroller>
 	
 </views:ExampleViewBase>

@@ -1,17 +1,18 @@
 package views
 {
+	import flash.events.TimerEvent;
+	import flash.utils.Timer;
+	import flash.utils.setTimeout;
 	import model.ExamplesModel;
-
 	import spark.components.Button;
 	import spark.components.Group;
+	import spark.components.Scroller;
 	import spark.components.View;
 	import spark.events.ViewNavigatorEvent;
 	import spark.layouts.VerticalLayout;
-
 	import mx.core.FlexGlobals;
 	import mx.events.FlexEvent;
 	import mx.events.ResizeEvent;
-
 	import flash.display.DisplayObject;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
@@ -32,6 +33,7 @@ package views
 		
 		[Bindable]
 		protected var dataModel:ExamplesModel;
+		private var resizeTimer:Timer;
 		
 		
 		public function ExampleViewBase()
@@ -53,6 +55,9 @@ package views
 				demoButton.label = "Back to demo";
 				actionContent = [demoButton];
 			}
+			
+			resizeTimer = new Timer(10, 1);
+			resizeTimer.addEventListener(TimerEvent.TIMER, resizeTimerHandler);
 			
 			addEventListener(ResizeEvent.RESIZE, resizeHandler);
 			addEventListener(FlexEvent.INITIALIZE, initializeHandler);
@@ -107,7 +112,15 @@ package views
 		
 		protected function onResize(width:Number, height:Number):void
 		{
-			
+			if (this.hasOwnProperty("scroller"))
+			{
+				var scroller:Scroller = this["scroller"] as Scroller;
+				if (scroller && scroller.viewport)
+				{
+					scroller.viewport.horizontalScrollPosition = 0;
+					scroller.viewport.verticalScrollPosition = 0;
+				}
+			}
 		}
 		
 		
@@ -164,6 +177,14 @@ package views
 		
 		
 		private function resizeHandler(event:ResizeEvent):void
+		{
+			// because on iPad stage.stageWidth/stageHeight still gives wrong values for some reason
+			resizeTimer.reset();
+			resizeTimer.start();
+		}
+
+
+		private function resizeTimerHandler(event:TimerEvent):void
 		{
 			onResize(width, height);
 		}

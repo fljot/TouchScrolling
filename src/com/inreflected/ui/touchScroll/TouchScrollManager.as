@@ -1,19 +1,7 @@
-package com.inreflected.ui.managers 
+package com.inreflected.ui.touchScroll 
 {
 	import com.inreflected.core.IDisposable;
 	import com.inreflected.core.IViewport;
-	import com.inreflected.ui.managers.supportClasses.ThrowEffect;
-
-	import org.gestouch.core.GestureState;
-	import org.gestouch.events.GestureStateEvent;
-	import org.gestouch.events.PanGestureEvent;
-	import org.gestouch.gestures.Gesture;
-	import org.gestouch.gestures.PanGesture;
-
-	import mx.events.FlexEvent;
-	import mx.events.PropertyChangeEvent;
-	import mx.events.TouchInteractionEvent;
-	import mx.events.TouchInteractionReason;
 
 	import flash.display.DisplayObject;
 	import flash.display.DisplayObjectContainer;
@@ -31,6 +19,17 @@ package com.inreflected.ui.managers
 	import flash.utils.Timer;
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getTimer;
+
+	import mx.events.FlexEvent;
+	import mx.events.PropertyChangeEvent;
+	import mx.events.TouchInteractionEvent;
+	import mx.events.TouchInteractionReason;
+
+	import org.gestouch.core.GestureState;
+	import org.gestouch.events.GestureStateEvent;
+	import org.gestouch.events.PanGestureEvent;
+	import org.gestouch.gestures.Gesture;
+	import org.gestouch.gestures.PanGesture;
 
 
 	[Event(name="touchInteractionStarting", type="mx.events.TouchInteractionEvent")]
@@ -71,13 +70,7 @@ package com.inreflected.ui.managers
 		 *  @private
 		 *  Minimum velocity needed to start a throw gesture, in pixels per millisecond.
 		 */
-		private static const MIN_START_VELOCITY:Number = 0.6 * Capabilities.screenDPI / 1000;
-		/**
-		 *  @private
-		 *  The amount of deceleration to apply to the velocity for each effect period
-		 *  For a faster deceleration, you can switch this to 0.990.
-		 */
-		private static const THROW_EFFECT_DECEL_FACTOR:Number = 0.995;	
+		private static const MIN_START_VELOCITY:Number = 0.6 * Capabilities.screenDPI / 1000;	
 		/**
 		 *  @private
 		 *  Weights to use when calculating velocity, giving the last velocity more of a weight 
@@ -120,10 +113,21 @@ package com.inreflected.ui.managers
 		 */
 		public var bounceEnabled:Boolean = true;
 		/**
-		 *  The amount of deceleration to apply to the velocity for each effect period
-		 *  For a faster deceleration, you can switch this to 0.990.
+		 *  The amount of deceleration to apply to the velocity for each throw effect period.
+		 *  For a faster deceleration, you can switch this to TouchScrollDecelerationRate.FAST
+		 *  (which is equal to 0.990).
 		 */
-		public var frictionFactor:Number = THROW_EFFECT_DECEL_FACTOR;
+		public var decelerationRate:Number = TouchScrollDecelerationRate.NORMAL;
+		/**
+		 * Minimum velocity needed to start a throw effect, in pixels per millisecond.
+		 * 
+		 * @default 0.6 inches/s
+		 */
+		public var minVelocity:Number = MIN_START_VELOCITY;
+		/**
+		 * Maximum velocity for a throw effect. Not limited by default.
+		 */
+		public var maxVelocity:Number;
 		/**
 		 * A way to control pull tention/distance. Should be value between 0 and 1.
 		 * Setting this property to NaN produces default pull
@@ -155,7 +159,7 @@ package com.inreflected.ui.managers
 		 */
 		public var directionalLock:Boolean;
 		
-		public var snappingFunction:Function;
+		public var snappingDelegate:ITouchScrollSnappingDelegate;
 		
 		
 		//----------------------------------
@@ -236,13 +240,6 @@ package com.inreflected.ui.managers
 		protected var _throwFinalHSP:Number;
 		protected var _throwFinalVSP:Number;
 		
-		/**
-		 *  @private
-		 *  Indicates whether the previous throw reached one of the maximum
-		 *  scroll positions (vsp or hsp) that was in effect at the time. 
-		 */
-		protected var _throwReachedMaximumScrollPosition:Boolean;
-		
 		protected var _stageAspectRatio:Number;
 		protected var _prevViewportWidth:Number;
 		protected var _prevViewportHeight:Number;
@@ -257,7 +254,6 @@ package com.inreflected.ui.managers
 		//----------------------------------
 		// Flags 
 		//----------------------------------
-		protected var _inTouchInteraction:Boolean;
 		protected var _dragScrollPending:Boolean;
 		protected var _preventGestureReset:Boolean;
 		
@@ -329,6 +325,13 @@ package com.inreflected.ui.managers
 				checkScrollPosition();
 			}
 		}
+		/**
+		 * Same as scrollBounds getter but without clonning. For internal performant use.
+		 */
+		protected function getScrollBounds():Rectangle
+		{
+			return _explicitScrollBounds ? _explicitScrollBounds : _measuredScrollBounds;
+		}
 		
 		
 		/** @private */
@@ -369,13 +372,9 @@ package com.inreflected.ui.managers
 			
 			stop();
 			
-			if (pagingEnabled)
+			if (pagingEnabled && viewport)
 			{
-				determinePageScrollPositions();
-			}
-			else
-			{
-				_currentPageHSP = _currentPageVSP = NaN;
+				snapContentScrollPosition();
 			}
 		}
 		
@@ -428,6 +427,13 @@ package com.inreflected.ui.managers
 		}
 		
 		
+		protected var _inTouchInteraction:Boolean;
+		public function get inTouchInteraction():Boolean
+		{
+			return _inTouchInteraction;
+		}
+		
+		
 		protected var _isScrolling:Boolean;
 		/**
 		 * Wether viewport is currently scrolling (due to touch interaction or throw effect).
@@ -461,6 +467,7 @@ package com.inreflected.ui.managers
 			var wasScrolling:Boolean = isScrolling;
 			_inTouchInteraction = false;
 			_isScrolling = false;
+			_dragScrollPending = false;
 			_directionalLockTimer.reset();
 			_lockHorizontal = _lockVertical = false;
 			
@@ -519,6 +526,7 @@ package com.inreflected.ui.managers
 				_throwEffect.target = null;
 				_throwEffect = null;
 			}
+			snappingDelegate = null;
 		}
 		
 		
@@ -615,6 +623,7 @@ package com.inreflected.ui.managers
 			viewport.removeEventListener(Event.RESIZE, viewport_resizeHandler);
 			viewport.removeEventListener(PropertyChangeEvent.PROPERTY_CHANGE, viewport_propertyChangeHandler);
 			viewport.removeEventListener(FlexEvent.UPDATE_COMPLETE, handleSizeChangeOnUpdateComplete);
+			viewport.removeEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
 		}
 		
 		
@@ -629,6 +638,11 @@ package com.inreflected.ui.managers
 			
 			updateCanScroll();
 			
+			if (isScrolling)
+			{
+				adjustCummulativeOffsets();
+			}
+			
 			// this is the point from which all deltas are based.
 			_startTime = getTimer();
 			
@@ -640,9 +654,6 @@ package com.inreflected.ui.managers
 			if (isScrolling)
 			{
 				// touch while throw effect playing
-				
-				// prevent performDrag() jumping on next ENTER_FRAME cycle
-				_dragScrollPending = false;
 					
 				if (directionalLock && (_lockHorizontal || _lockVertical))
 				{
@@ -661,6 +672,53 @@ package com.inreflected.ui.managers
 			}
 			
 			_directionalLockTimer.reset();
+		}
+		
+		
+		protected function adjustCummulativeOffsets():void
+		{
+			// We need to adjust _cummulativeOffsetX and _cummulativeOffsetY
+			// to preserve correct pull mechanics
+			var viewportSize:Number;//viewport width or height
+			var pullProgress:Number;// [0.. 1]
+			const pullAllowed:Boolean = (maxPull != maxPull || maxPull > 0);
+			const scrollBounds:Rectangle = getScrollBounds();
+			
+			if (pullAllowed && canScrollHorizontally)
+			{
+				viewportSize = viewport.width;
+				if (_touchHSP < scrollBounds.left)
+				{
+					pullProgress = (scrollBounds.left - _touchHSP) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					_cummulativeOffsetX = viewportSize * pullProgress + _touchHSP - scrollBounds.left;
+				}
+				else
+				if (_touchHSP > scrollBounds.right)
+				{
+					pullProgress = (_touchHSP - scrollBounds.right) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					 _cummulativeOffsetX = -viewportSize * pullProgress + _touchHSP - scrollBounds.right;
+				}
+			}
+			
+			if (pullAllowed && canScrollVertically)
+			{
+				viewportSize = viewport.height;
+				if (_touchVSP < scrollBounds.top)
+				{
+					pullProgress = (scrollBounds.top - _touchVSP) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					_cummulativeOffsetY = viewportSize * pullProgress + _touchVSP - scrollBounds.top;
+				}
+				else
+				if (_touchVSP > scrollBounds.bottom)
+				{
+					pullProgress = (_touchVSP - scrollBounds.bottom) / viewportSize;
+					pullProgress = Math.max(1 - Math.pow(1 - Math.min(pullProgress / (maxPull || MAX_PULL_FACTOR), 1), 1 / PULL_TENSION_FACTOR), pullProgress);
+					 _cummulativeOffsetY = -viewportSize * pullProgress + _touchVSP - scrollBounds.bottom;
+				}
+			}
 		}
 		
 		
@@ -737,7 +795,7 @@ package com.inreflected.ui.managers
 			var pullOffset:Number;// >=0
 			var pullProgress:Number;// [0.. 1]
 			
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			const pullAllowed:Boolean = (maxPull != maxPull || maxPull > 0);
 			
 			if (canScrollHorizontally)
@@ -758,8 +816,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = scrollBounds.left - newHSP;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newHSP = scrollBounds.left - viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newHSP = scrollBounds.left - viewportSize * pullProgress;
 						}
 						else
 						{
@@ -769,8 +827,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = newHSP - scrollBounds.right;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newHSP = scrollBounds.right + viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newHSP = scrollBounds.right + viewportSize * pullProgress;
 						}
 					}
 					else
@@ -799,8 +857,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = scrollBounds.top - newVSP;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newVSP = scrollBounds.top - viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newVSP = scrollBounds.top - viewportSize * pullProgress;
 						}
 						else
 						{
@@ -810,8 +868,8 @@ package com.inreflected.ui.managers
 							// more natural pull tension:
 							pullOffset = newVSP - scrollBounds.bottom;
 							pullProgress = pullOffset < viewportSize ? pullOffset / viewportSize : 1;
-							pullProgress = Math.min(1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR), pullProgress);
-							newVSP = scrollBounds.bottom + viewportSize * (maxPull || MAX_PULL_FACTOR) * pullProgress;
+							pullProgress = Math.min((maxPull || MAX_PULL_FACTOR) * (1 - Math.pow(1 - pullProgress, PULL_TENSION_FACTOR)), pullProgress);
+							newVSP = scrollBounds.bottom + viewportSize * pullProgress;
 						}
 					}
 					else
@@ -881,13 +939,13 @@ package com.inreflected.ui.managers
 				_throwEffect.onEffectCompleteFunction = onThrowEffectComplete;
 			}
 			
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			var minHSP:Number = scrollBounds.left;
 			var minVSP:Number = scrollBounds.top;
 			var maxHSP:Number = scrollBounds.right;
 			var maxVSP:Number = scrollBounds.bottom;
 			
-			var frictionFactor:Number = this.frictionFactor;
+			var decelerationRate:Number = this.decelerationRate;
 			
 			if (pagingEnabled)
 			{
@@ -907,7 +965,7 @@ package com.inreflected.ui.managers
 				
 				// Flex team attenuates velocity here,
 				// but I think it's better to adjust friction to preserve correct starting velocity.
-				frictionFactor *= 0.98;
+				decelerationRate *= 0.98;
 	        }
 	
 	        _throwEffect.propertyNameX = canScrollHorizontally ? HORIZONTAL_SCROLL_POSITION : null;
@@ -920,7 +978,7 @@ package com.inreflected.ui.managers
 	        _throwEffect.minPositionY = minVSP;
 	        _throwEffect.maxPositionX = maxHSP;
 	        _throwEffect.maxPositionY = maxVSP;
-	        _throwEffect.decelerationFactor = frictionFactor;
+	        _throwEffect.decelerationRate = decelerationRate;
 	        _throwEffect.viewportWidth = viewport.width;
 	        _throwEffect.viewportHeight = viewport.height;
 			_throwEffect.pull = (maxPull > 0 || maxPull != maxPull);
@@ -929,22 +987,12 @@ package com.inreflected.ui.managers
 	        
 	        // In snapping mode, we need to ensure that the final throw position is snapped appropriately.
 //	        _throwEffect.finalPositionFilterFunction = snappingFunction == null ? null : getSnappedPosition; 
-	        _throwEffect.finalPositionFilterFunction = snappingFunction; 
+	        _throwEffect.finalPositionFilterFunction = snappingDelegate ? snappingDelegate.getSnappedPosition : null; 
 	        
-			_throwReachedMaximumScrollPosition = false;
 	        if (_throwEffect.setup())
 	        {
-				//TODO: _throwReachedMin... ?
 	            _throwFinalHSP = _throwEffect.finalPosition.x;
-	            if (canScrollHorizontally && _throwFinalHSP == maxHSP)
-				{
-	                _throwReachedMaximumScrollPosition = true;
-				}
 	            _throwFinalVSP = _throwEffect.finalPosition.y;
-	            if (canScrollVertically && _throwFinalVSP == maxVSP)
-				{
-	                _throwReachedMaximumScrollPosition = true;
-				}
 	        }
 	        else
 	        {
@@ -1184,7 +1232,7 @@ package com.inreflected.ui.managers
 		 */
 		protected function snapContentScrollPosition(snapHorizontal:Boolean = true, snapVertical:Boolean = true):void
 		{
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			var pos:Number;
 						
 			// Note that we only snap the scroll position if content is present. This allows existing scroll position
@@ -1205,6 +1253,10 @@ package com.inreflected.ui.managers
 				}
 				
 				viewport.horizontalScrollPosition = getSnappedPosition(pos, HORIZONTAL_SCROLL_POSITION);
+				if (pagingEnabled)
+				{
+					_currentPageHSP = viewport.horizontalScrollPosition;
+				}
 			}
 			if (snapVertical && viewport.contentHeight > 0)
 			{
@@ -1221,6 +1273,10 @@ package com.inreflected.ui.managers
 				}
 				
 				viewport.verticalScrollPosition = getSnappedPosition(pos, VERTICAL_SCROLL_POSITION);
+				if (pagingEnabled)
+				{
+					_currentPageVSP = viewport.verticalScrollPosition;
+				}
 			}
 		}
 		
@@ -1231,12 +1287,12 @@ package com.inreflected.ui.managers
 		 */
 		protected function getSnappedPosition(position:Number, propertyName:String):Number
 		{
-			const scrollBounds:Rectangle = this.scrollBounds;
+			const scrollBounds:Rectangle = getScrollBounds();
 			
 			var viewportWidth:Number = isNaN(viewport.width) ? 0 : viewport.width;
 			var viewportHeight:Number = isNaN(viewport.height) ? 0 : viewport.height;
 			
-			if (pagingEnabled && snappingFunction == null)
+			if (pagingEnabled && !snappingDelegate)
 			{
 				// If we're in paging mode and no snapping is enabled, then we must snap
 				// the position to the beginning of a page.  i.e. a multiple of the 
@@ -1255,9 +1311,9 @@ package com.inreflected.ui.managers
 					//TODO: Is it neccesary to clip value here or in snapContentScrollPositions() is enough?
 				}
 			}
-			else if (snappingFunction != null)
+			else if (snappingDelegate)
 			{
-				position = snappingFunction(position, propertyName);
+				position = snappingDelegate.getSnappedPosition(position, propertyName);
 			}
 			
 			return Math.round(position);
@@ -1301,7 +1357,7 @@ package com.inreflected.ui.managers
 			
 			updateCanScroll();
 			
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			// Determine the new maximum valid scroll positions
 			var minHSP:Number = scrollBounds.left;
 			var minVSP:Number = scrollBounds.top;
@@ -1325,22 +1381,15 @@ package com.inreflected.ui.managers
 				var needRethrow:Boolean;
 				
 				// See whether we possibly need to re-throw because the final snapped position is
-				// no longer snapped.  This can occur when the snapped position was estimated due to virtual
-				// layout, and the actual snapped position (i.e. once the relevent elements have been measured)
-				// turns out to be different.
-				// We also do this when pageScrolling is enabled to make sure we snap to a valid page position
-				// after an orientation change - since an orientation change necessarily moves all the page
-				// boundaries.
-				if (pagingEnabled || snappingFunction != null)
+				// no longer snapped.
+				if (pagingEnabled || snappingDelegate)
 				{
-					// NOTE: a lighter-weight way of doing this would be to retain the element
-					// at the end of the throw and see whether its bounds have changed.
-					if (canScrollHorizontally && getSnappedPosition(_throwFinalHSP, HORIZONTAL_SCROLL_POSITION) != _throwFinalHSP)
+					if (canScrollVertically && getSnappedPosition(_throwFinalVSP, VERTICAL_SCROLL_POSITION) != _throwFinalVSP)
 					{
 						needRethrow = true;
 					}
-				    
-					if (canScrollVertically && getSnappedPosition(_throwFinalVSP, VERTICAL_SCROLL_POSITION) != _throwFinalVSP)
+				    else
+					if (canScrollHorizontally && getSnappedPosition(_throwFinalHSP, HORIZONTAL_SCROLL_POSITION) != _throwFinalHSP)
 					{
 						needRethrow = true;
 					}
@@ -1352,12 +1401,6 @@ package com.inreflected.ui.managers
 				// than to the adjacent page.
 				else
 				{
-					//TODO: min?
-					if (_throwReachedMaximumScrollPosition && (_throwFinalVSP < maxVSP || _throwFinalHSP < maxHSP))
-					{
-						needRethrow = true;
-					}
-					
 					if (_throwFinalVSP > maxVSP || _throwFinalVSP < minVSP ||
 						_throwFinalHSP > maxHSP || _throwFinalHSP < minHSP)
 					{
@@ -1402,7 +1445,7 @@ package com.inreflected.ui.managers
 					}
 				}
 			}
-			else if (!_inTouchInteraction)
+			else if (!inTouchInteraction)
 			{
 				// No touch interaction is in effect, but the content may be sitting at
 				// a scroll position that is now invalid (due to viewport size properties change). 
@@ -1410,20 +1453,24 @@ package com.inreflected.ui.managers
 				// The most likely reason we get here is that the device orientation changed
 				// while the content is stationary (i.e. not in an animated throw).
 				
-				var snapElementIndex:int = -1;
 				if (_prevViewportWidth != viewportWidth || _prevViewportHeight != viewportHeight)
 				{
-					// The viewport size has changed (most likely due to device orientation change)
+					// The viewport size has changed
 					
-					if (pagingEnabled && snappingFunction == null)
+					var snapElementIndex:int = -1;
+					if (pagingEnabled && !snappingDelegate)
 					{
-//						// Paging without item snapping.  We want to snap to the same page, as
-//						// long as the number of pages is the same.
-//						// The number of pages being different indicates that the relationship
-//						// between pages and content is unknown, and it makes no sense to try and
-//						// retain the same page.
-						// FIXME: !!! it's unclear when to set _prevHorizontalPageCount and _prevVerticalPageCount
-						if (true || _prevHorizontalPageCount == getCurrentPageCount(HORIZONTAL_SCROLL_POSITION))
+						// Paging without item snapping.  We want to snap to the same page, as
+						// long as the number of pages is the same.
+						// The number of pages being different indicates that the relationship
+						// between pages and content is unknown, and it makes no sense to try and
+						// retain the same page.
+						var numPages:uint;
+						
+						//FIXME: fix conditions and formulas for unlimited scrolling
+						
+						numPages = getCurrentPageCount(HORIZONTAL_SCROLL_POSITION);
+						if (_prevHorizontalPageCount == numPages)
 						{
 							if (_prevViewportWidth != viewportWidth && _prevViewportWidth > 0)
 							{
@@ -1432,7 +1479,13 @@ package com.inreflected.ui.managers
 								_currentPageHSP = viewport.horizontalScrollPosition;
 							}
 						}
-						if (true || _prevVerticalPageCount == getCurrentPageCount(VERTICAL_SCROLL_POSITION))
+						else
+						{
+							_prevHorizontalPageCount = numPages;
+						}
+						
+						numPages = getCurrentPageCount(VERTICAL_SCROLL_POSITION);
+						if (_prevVerticalPageCount == numPages)
 						{
 							if (_prevViewportHeight != viewportHeight && _prevViewportHeight > 0)
 							{
@@ -1441,20 +1494,32 @@ package com.inreflected.ui.managers
 								_currentPageVSP = viewport.verticalScrollPosition;
 							}
 						}
+						else
+						{
+							_prevVerticalPageCount = numPages;
+						}
 					}
-					if (pagingEnabled && snappingFunction != null)
+					else if (pagingEnabled && snappingDelegate)
 					{
-						//TODO
+						if (_prevViewportWidth > 0)
+						{
+							viewport.horizontalScrollPosition = snappingDelegate.getSnappedPositionOnResize(
+								viewport.horizontalScrollPosition, HORIZONTAL_SCROLL_POSITION, _prevViewportWidth);
+						}
+						if (_prevViewportHeight > 0)
+						{
+							viewport.verticalScrollPosition = snappingDelegate.getSnappedPositionOnResize(
+								viewport.verticalScrollPosition, VERTICAL_SCROLL_POSITION, _prevViewportHeight);
+						}
+					}
+					else if (!pagingEnabled && snappingDelegate)
+					{
+						// Do nothing since we don't care much about precise item snapping
+						// for non-paging mode
 					}
 				}
 				
 				snapContentScrollPosition();
-				
-				//new
-				if (pagingEnabled)
-				{
-					determinePageScrollPositions();
-				}
 			}
 			
 			_prevViewportWidth = viewportWidth;
@@ -1479,7 +1544,7 @@ package com.inreflected.ui.managers
 			
 			_measuredScrollBounds.width = viewport.contentWidth > viewportWidth ?
 				viewport.contentWidth - viewportWidth : 0;
-			if (pagingEnabled && snappingFunction == null && viewportWidth > 0 && _measuredScrollBounds.width > 0)
+			if (pagingEnabled && !snappingDelegate && viewportWidth > 0 && _measuredScrollBounds.width > 0)
 			{
 				// If the content height isn't an exact multiple of the viewport height,
 				// then we make sure the max scroll position allows for a full page (including
@@ -1492,7 +1557,7 @@ package com.inreflected.ui.managers
 			
 			_measuredScrollBounds.height = viewport.contentHeight > viewportHeight ?
 				viewport.contentHeight - viewportHeight : 0;
-			if (pagingEnabled && snappingFunction == null && viewportHeight > 0 && _measuredScrollBounds.height > 0)
+			if (pagingEnabled && !snappingDelegate && viewportHeight > 0 && _measuredScrollBounds.height > 0)
 			{
 				// If the content height isn't an exact multiple of the viewport height,
 				// then we make sure the max scroll position allows for a full page (including
@@ -1503,6 +1568,7 @@ package com.inreflected.ui.managers
 				}
 			}
 			
+			// TODO: another method in snappingDelegate?
 			// We can't pre-calculate exact bounds for the case when snappignFunction is defined,
 			// so either be satifsfied with these calculations or set explicit scrollBounds.
 		}
@@ -1519,7 +1585,7 @@ package com.inreflected.ui.managers
 			var viewportSize:Number;
 			var minSP:Number;
 			var maxSP:Number;
-			var scrollBounds:Rectangle = this.scrollBounds;
+			var scrollBounds:Rectangle = getScrollBounds();
 			var currPageScrollPosition:Number;
 			if (propertyName == VERTICAL_SCROLL_POSITION)
 			{
@@ -1541,14 +1607,14 @@ package com.inreflected.ui.managers
 			const stationaryOffsetThreshold:Number = viewportSize * 0.5;
 			
 			// Check both the throw velocity and the drag distance. If either exceeds our threholds, then we switch to the next page.
-			if (velocity < -MIN_START_VELOCITY || position >= currPageScrollPosition + stationaryOffsetThreshold)
+			if (velocity < -minVelocity || position >= currPageScrollPosition + stationaryOffsetThreshold)
 			{
 				// Go to the next page
 				// Set the new page scroll position so the throw effect animates the page into place
 				pagePosition = Math.min(currPageScrollPosition + viewportSize, maxSP);
 			}
 			else
-			if (velocity > MIN_START_VELOCITY || position <= currPageScrollPosition - stationaryOffsetThreshold)
+			if (velocity > minVelocity || position <= currPageScrollPosition - stationaryOffsetThreshold)
 			{
 				// Go to the previous page
 				pagePosition = Math.max(currPageScrollPosition - viewportSize, minSP);
@@ -1556,7 +1622,7 @@ package com.inreflected.ui.managers
 			else
 			{
 				// Snap to the current one
-				return currPageScrollPosition;
+				pagePosition = currPageScrollPosition;
 			}
 			
 			// Ensure the new page position is snapped appropriately
@@ -1566,23 +1632,11 @@ package com.inreflected.ui.managers
 		}
 		
 		
-		protected function determinePageScrollPositions():void
-		{
-			_currentPageHSP = viewport ? getSnappedPosition(viewport.horizontalScrollPosition, HORIZONTAL_SCROLL_POSITION) : 0;
-			_currentPageVSP = viewport ? getSnappedPosition(viewport.verticalScrollPosition, VERTICAL_SCROLL_POSITION) : 0;
-		}
-		
-		
 		protected function handleViewportSizeChange():void
 		{
 			// The content size has changed, so the current scroll
 			// position and/or any in-progress throw may need to be adjusted.
 			checkScrollPosition();
-			
-			if (pagingEnabled && (isNaN(_currentPageHSP) || isNaN(_currentPageVSP)))
-			{
-				determinePageScrollPositions();
-			}
 		}
 		
 		
@@ -1623,7 +1677,7 @@ package com.inreflected.ui.managers
 			
 			// Since we may have multitouch, this condition helps to call
 			// startScrollWatch() only once per touch interaction session.
-			if (!_inTouchInteraction)
+			if (!inTouchInteraction)
 			{
 				startScrollWatch();
 			}
@@ -1647,7 +1701,7 @@ package com.inreflected.ui.managers
 					
 					// 5 pixels at 252dpi worked fairly well for this heuristic.
 					const THRESHOLD_INCHES:Number = 0.01984;// 5/252
-					var captureThreshold:Number = Math.round(THRESHOLD_INCHES * Capabilities.screenDPI);
+					var captureThreshold:uint = THRESHOLD_INCHES * Capabilities.screenDPI;
 					
 					// Need to convert the pixel delta to the local coordinate system in
 					// order to compare it to a scroll position delta.
@@ -1655,13 +1709,12 @@ package com.inreflected.ui.managers
 						.subtract(_interactiveTarget.globalToLocal(ZERO_POINT)).x;
 					
 					if (_throwEffect && _throwEffect.isPlaying &&
-						(Math.abs(viewport.verticalScrollPosition - _throwFinalVSP) <= captureThreshold ||
-						 Math.abs(viewport.horizontalScrollPosition - _throwFinalHSP) <= captureThreshold))
+						Math.abs(viewport.verticalScrollPosition - _throwFinalVSP) <= captureThreshold &&
+						Math.abs(viewport.horizontalScrollPosition - _throwFinalHSP) <= captureThreshold)
 					{
-						// Stop the current throw and allow the event
-						// to propogate normally.
+						// Stop the current throw and allow the event to propogate normally.
 						// We must supress panGesture.reset() call because this touch is already
-						// registered by gesture (on stage in capture phase).
+						// registered by gesture (on stage in capture phase) and we should not loose it.
 						_preventGestureReset = true;
 						stop();
 						_preventGestureReset = false;
@@ -1674,7 +1727,13 @@ package com.inreflected.ui.managers
 						event.stopImmediatePropagation();
 						
 						stopThrowEffectOnTouch();
-						startScrollWatch();
+						
+						// Since we may have multitouch, this condition helps to call
+						// startScrollWatch() only once per touch interaction session.
+						if (!inTouchInteraction)
+						{
+							startScrollWatch();
+						}
 					}										
 					break;
 				
@@ -1715,8 +1774,20 @@ package com.inreflected.ui.managers
 			switch (event.newState)
 			{
 				case GestureState.CANCELLED:
-				case GestureState.FAILED:
 					stop();
+					break;
+				case GestureState.FAILED:
+					if (isScrolling)
+					{
+						// Touch came when content was scrolling,
+						// but gesture hasn't began (touch hasn't moved enough).
+						// Regular throw will be performed (with zero velocity)
+						onDragEnd();
+					}
+					else
+					{
+						stop();
+					}
 					break;
 			}
 		}
@@ -1818,8 +1889,8 @@ package com.inreflected.ui.managers
 			
 			addMouseEventHistory(dx, dy);
 			
-			_lastDirection.x = (canScrollHorizontally && _lastDragOffsetX != 0) ? (dx > _lastDragOffsetX ? 1 : -1) : 0;
-			_lastDirection.y = (canScrollVertically && _lastDragOffsetY != 0) ? (dy > _lastDragOffsetY ? 1 : -1) : 0;
+			_lastDirection.x = (canScrollHorizontally && _lastDragOffsetX != 0) ? (dx > 0 ? 1 : -1) : 0;
+			_lastDirection.y = (canScrollVertically && _lastDragOffsetY != 0) ? (dy > 0 ? 1 : -1) : 0;
 			
 			_dragScrollPending = true;
 			
@@ -1828,7 +1899,7 @@ package com.inreflected.ui.managers
 		}
 
 		
-		protected function onDragEnd(event:PanGestureEvent):void 
+		protected function onDragEnd(event:PanGestureEvent = null):void 
 		{
 			viewport.removeEventListener(Event.ENTER_FRAME, viewport_enterFrameHandler);
 			_inTouchInteraction = false;
@@ -1844,7 +1915,7 @@ package com.inreflected.ui.managers
 			// calculate the velocity using a weighted average
 			var throwVelocity:Point = calculateThrowVelocity();
 			
-			if (throwVelocity.length < MIN_START_VELOCITY)
+			if (throwVelocity.length < minVelocity)
 			{
 				throwVelocity.x = 0;
 				throwVelocity.y = 0;
@@ -1856,15 +1927,19 @@ package com.inreflected.ui.managers
         		var finalDragVel:Point = calculateFinalDragVelocity(100);
 				CONFIG::Debug
 				{
-					trace('finalDragVel: ' + (finalDragVel), finalDragVel.length, MIN_START_VELOCITY);
+					trace('finalDragVel: ' + (finalDragVel), finalDragVel.length, minVelocity);
 				}		
 				// If the gesture appears to have slowed or stopped prior to the mouse up,
 				// then force the velocity to zero.
 				// Compare the final 100ms of the drag to the minimum value.
-				if (finalDragVel.length <= MIN_START_VELOCITY)
+				if (finalDragVel.length <= minVelocity)
 				{
 					throwVelocity.x = 0;
 					throwVelocity.y = 0;
+				}
+				else if (maxVelocity == maxVelocity && maxVelocity > minVelocity)
+				{
+					throwVelocity.normalize(maxVelocity);
 				}
 			}
 			
@@ -1891,6 +1966,11 @@ package com.inreflected.ui.managers
 				// If the viewport dimensions have changed, then we may need to update the
 				// scroll ranges and snap the scroll position per the new viewport size.
 				viewport.addEventListener(FlexEvent.UPDATE_COMPLETE, handleSizeChangeOnUpdateComplete);
+			}
+			else if (event)
+			{
+				// Delay resize handling to ensure both width and height are set to new values
+				viewport.addEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
 			}
 			else
 			{
@@ -1919,7 +1999,8 @@ package com.inreflected.ui.managers
 						}
 						else
 						{
-							handleViewportSizeChange();
+							// Delay resize handling to ensure both width and height are set to new values
+							viewport.addEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
 						}
 						break;
 				}
@@ -1932,11 +2013,8 @@ package com.inreflected.ui.managers
 		 */
 		private function handleSizeChangeOnUpdateComplete(event:Event):void
 		{
-			if (event && event is FlexEvent)
-			{
-				viewport.removeEventListener(FlexEvent.UPDATE_COMPLETE, handleSizeChangeOnUpdateComplete);
-				handleViewportSizeChange();
-			}
+			viewport.removeEventListener(event.type, handleSizeChangeOnUpdateComplete);
+			handleViewportSizeChange();
 		}
 	}
 }

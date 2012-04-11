@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+List prototype example. Shows:
+* how to disable horizontal (in general: one-axis) scrolling (or rather bouncing)
+* snapping functionality
+
+TODO: add interactive elements into viewport to demonstrate their deselection on scrolling starting
+-->
 <views:ExampleViewBase xmlns:fx="http://ns.adobe.com/mxml/2009"
     xmlns:s="library://ns.adobe.com/flex/spark"
 	xmlns:mx="library://ns.adobe.com/flex/mx"
 	xmlns:views="views.*"
+	implements="com.inreflected.ui.touchScroll.ITouchScrollSnappingDelegate"
 	>
 	
 	<fx:Script>
 		<![CDATA[
+			import com.inreflected.ui.touchScroll.TouchScrollManager;
+
 			import components.TiledGroup;
 			import components.TouchScroller;
 
-			import com.inreflected.ui.managers.TouchScrollManager;
-			
+
 			private static const LIST_ITEM_HEIGHT:uint = Capabilities.screenDPI / 2;
 			
 			private var touchScroller:TouchScroller;
@@ -32,7 +41,7 @@
 				
 				touchScroller = new TouchScroller();
 				touchScroller.touchScrollManager.allwaysBounceHorizontal = false;
-				touchScroller.touchScrollManager.snappingFunction = snapTo;			
+				touchScroller.touchScrollManager.snappingDelegate = this;			
 				app.parent.addChildAt(touchScroller, 0);
 				
 				tiledGroup = new TiledGroup();
@@ -45,8 +54,8 @@
 				allwaysBounceVCheckBox.selected = touchScroller.touchScrollManager.allwaysBounceVertical;
 				maxPullSlider.value = TouchScrollManager.MAX_PULL_FACTOR;
 				maxBounceSlider.value = TouchScrollManager.MAX_OVERSHOOT_FACTOR;
-				frictionFactorSlider.value = touchScroller.touchScrollManager.frictionFactor;
-				snappingCheckBox.selected = (touchScroller.touchScrollManager.snappingFunction != null);
+				decelerationRateSlider.value = touchScroller.touchScrollManager.decelerationRate;
+				snappingCheckBox.selected = (touchScroller.touchScrollManager.snappingDelegate != null);
 			}
 			
 			
@@ -67,25 +76,6 @@
 			{
 				tiledGroup.cellWidth = tiledGroup.width;
 				tiledGroup.cellHeight = LIST_ITEM_HEIGHT;
-			}
-			
-			
-			private function snapTo(position:Number, propName:String):Number
-			{
-				// Resulting position should be bounds of touchScroller.touchScrollManager.scrollBounds
-				// So for custom snapping (with spaces in the beginning/end) there are two options:
-				// 1) set scrollBounds manually (min values CAN be negative)
-				// 2) make measuredBounds calculated properly via having custom layout for your viewport
-				
-				if (propName == TouchScrollManager.VERTICAL_SCROLL_POSITION)
-				{
-					// Condition not to have any empty space at the bottom
-					if (position < touchScroller.touchScrollManager.scrollBounds.bottom)
-					{
-						position = Math.round(position / LIST_ITEM_HEIGHT) * LIST_ITEM_HEIGHT;
-					}
-				}
-				return position;
 			}
 			
 				
@@ -129,45 +119,72 @@
 					touchScroller.touchScrollManager.maxBounce = maxBounceSlider.value;
 				}
 				else
-				if (event.target == frictionFactorSlider)
+				if (event.target == decelerationRateSlider)
 				{
-					touchScroller.touchScrollManager.frictionFactor = frictionFactorSlider.value;
+					touchScroller.touchScrollManager.decelerationRate = decelerationRateSlider.value;
 				}
 				else
 				if (event.target == snappingCheckBox)
 				{
-					touchScroller.touchScrollManager.snappingFunction = snappingCheckBox.selected ? snapTo : null;
+					touchScroller.touchScrollManager.snappingDelegate = snappingCheckBox.selected ? this : null;
 				}
+			}
+			
+			
+			public function getSnappedPosition(position:Number, propertyName:String):Number
+			{
+				// Resulting position should be bounds of touchScroller.touchScrollManager.scrollBounds
+				// So for custom snapping (with spaces in the beginning/end) there are two options:
+				// 1) set scrollBounds manually (min values CAN be negative)
+				// 2) make measuredBounds calculated properly via having custom layout for your viewport
+				
+				if (propertyName == TouchScrollManager.VERTICAL_SCROLL_POSITION)
+				{
+					// Condition not to have any empty space at the bottom
+					if (position < touchScroller.touchScrollManager.scrollBounds.bottom)
+					{
+						position = Math.round(position / LIST_ITEM_HEIGHT) * LIST_ITEM_HEIGHT;
+					}
+				}
+				return position;
+			}
+			
+			
+			public function getSnappedPositionOnResize(position:Number, propertyName:String, prevViewportSize:Number):Number
+			{
+				return position;
 			}
 		]]>
 	</fx:Script>
 	
-	<s:Group id="settings">		
-		<s:Label text="height"/>
-		<s:HSlider id="heightSlider"
-			minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
-			change="onControlChange(event)"/>
-		
-		<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
-		<s:CheckBox id="allwaysBounceHCheckBox" label="allwaysBounceHorizontal" change="onControlChange(event)" />
-		<s:CheckBox id="allwaysBounceVCheckBox" label="allwaysBounceVertical" change="onControlChange(event)" />
-		
-		<s:Label text="maxPull"/>
-		<s:HSlider id="maxPullSlider"
-			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
-			change="onControlChange(event)"/>
-		
-		<s:Label text="maxBounce"/>
-		<s:HSlider id="maxBounceSlider"
-			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
-			change="onControlChange(event)"/>
-		
-		<s:Label text="frictionFactor"/>
-		<s:HSlider id="frictionFactorSlider"
-			minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
-			change="onControlChange(event)"/>
-		
-		<s:CheckBox id="snappingCheckBox" label="Use snapping function" change="onControlChange(event)" />
-	</s:Group>
+	<s:Scroller id="scroller" width="100%" height="100%">
+		<s:Group id="settings">		
+			<s:Label text="height"/>
+			<s:HSlider id="heightSlider"
+				minimum="1" maximum="120" stepSize="1" dataTipPrecision="0"
+				change="onControlChange(event)"/>
+			
+			<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
+			<s:CheckBox id="allwaysBounceHCheckBox" label="allwaysBounceHorizontal" change="onControlChange(event)" />
+			<s:CheckBox id="allwaysBounceVCheckBox" label="allwaysBounceVertical" change="onControlChange(event)" />
+			
+			<s:Label text="maxPull"/>
+			<s:HSlider id="maxPullSlider"
+				minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+				change="onControlChange(event)"/>
+			
+			<s:Label text="maxBounce"/>
+			<s:HSlider id="maxBounceSlider"
+				minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+				change="onControlChange(event)"/>
+			
+			<s:Label text="decelerationRate"/>
+			<s:HSlider id="decelerationRateSlider"
+				minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
+				change="onControlChange(event)"/>
+			
+			<s:CheckBox id="snappingCheckBox" label="Use snapping function" change="onControlChange(event)" />
+		</s:Group>
+	</s:Scroller>
 	
 </views:ExampleViewBase>

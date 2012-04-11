@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+General example that shows most of the API.
+-->
 <views:ExampleViewBase xmlns:fx="http://ns.adobe.com/mxml/2009"
     xmlns:s="library://ns.adobe.com/flex/spark"
 	xmlns:mx="library://ns.adobe.com/flex/mx"
@@ -7,12 +10,12 @@
 	
 	<fx:Script>
 		<![CDATA[
+			import com.inreflected.ui.touchScroll.TouchScrollManager;
+
 			import components.TiledGroup;
 			import components.TouchScroller;
 
-			import com.inreflected.ui.managers.TouchScrollManager;
-			
-			
+
 			private var touchScroller:TouchScroller;
 			private var tiledGroup:TiledGroup;
 
@@ -43,7 +46,7 @@
 				allwaysBounceVCheckBox.selected = touchScroller.touchScrollManager.allwaysBounceVertical;
 				maxPullSlider.value = TouchScrollManager.MAX_PULL_FACTOR;
 				maxBounceSlider.value = TouchScrollManager.MAX_OVERSHOOT_FACTOR;
-				frictionFactorSlider.value = touchScroller.touchScrollManager.frictionFactor;
+				decelerationRateSlider.value = touchScroller.touchScrollManager.decelerationRate;
 				directionalLockCheckBox.selected = touchScroller.touchScrollManager.directionalLock;
 				pagingCheckBox.selected = touchScroller.touchScrollManager.pagingEnabled;
 			}
@@ -121,9 +124,9 @@
 					touchScroller.touchScrollManager.maxBounce = maxBounceSlider.value;
 				}
 				else
-				if (event.target == frictionFactorSlider)
+				if (event.target == decelerationRateSlider)
 				{
-					touchScroller.touchScrollManager.frictionFactor = frictionFactorSlider.value;
+					touchScroller.touchScrollManager.decelerationRate = decelerationRateSlider.value;
 				}
 				else
 				if (event.target == directionalLockCheckBox)
@@ -139,39 +142,41 @@
 			}
 		]]>
 	</fx:Script>
-	
-	<s:Group id="settings">	
-		<s:Label text="width"/>
-		<s:HSlider id="widthSlider"
-			minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
-			change="onControlChange(event)"/>
-		
-		<s:Label text="height"/>
-		<s:HSlider id="heightSlider"
-			minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
-			change="onControlChange(event)"/>
-		
-		<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
-		<s:CheckBox id="allwaysBounceHCheckBox" label="allwaysBounceHorizontal" change="onControlChange(event)" />
-		<s:CheckBox id="allwaysBounceVCheckBox" label="allwaysBounceVertical" change="onControlChange(event)" />
-		
-		<s:Label text="maxPull"/>
-		<s:HSlider id="maxPullSlider"
-			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
-			change="onControlChange(event)"/>
-		
-		<s:Label text="maxBounce"/>
-		<s:HSlider id="maxBounceSlider"
-			minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
-			change="onControlChange(event)"/>
-		
-		<s:Label text="frictionFactor"/>
-		<s:HSlider id="frictionFactorSlider"
-			minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
-			change="onControlChange(event)"/>
-		
-		<s:CheckBox id="directionalLockCheckBox" label="directionalLock" change="onControlChange(event)" />
-		<s:CheckBox id="pagingCheckBox" label="pagingEnabled" change="onControlChange(event)" />
-	</s:Group>
+
+	<s:Scroller id="scroller" width="100%" height="100%">
+		<s:Group id="settings">	
+			<s:Label text="width"/>
+			<s:HSlider id="widthSlider"
+				minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
+				change="onControlChange(event)"/>
+			
+			<s:Label text="height"/>
+			<s:HSlider id="heightSlider"
+				minimum="1" maximum="30" stepSize="1" dataTipPrecision="0"
+				change="onControlChange(event)"/>
+			
+			<s:CheckBox id="bounceCheckBox" label="bounceEnabled" change="onControlChange(event)" />
+			<s:CheckBox id="allwaysBounceHCheckBox" label="allwaysBounceHorizontal" change="onControlChange(event)" />
+			<s:CheckBox id="allwaysBounceVCheckBox" label="allwaysBounceVertical" change="onControlChange(event)" />
+			
+			<s:Label text="maxPull"/>
+			<s:HSlider id="maxPullSlider"
+				minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+				change="onControlChange(event)"/>
+			
+			<s:Label text="maxBounce"/>
+			<s:HSlider id="maxBounceSlider"
+				minimum="0" maximum="1" stepSize="0.1" dataTipPrecision="1"
+				change="onControlChange(event)"/>
+			
+			<s:Label text="decelerationRate"/>
+			<s:HSlider id="decelerationRateSlider"
+				minimum="0.98" maximum="1" stepSize="0.001" dataTipPrecision="3"
+				change="onControlChange(event)"/>
+			
+			<s:CheckBox id="directionalLockCheckBox" label="directionalLock" change="onControlChange(event)" />
+			<s:CheckBox id="pagingCheckBox" label="pagingEnabled" change="onControlChange(event)" />
+		</s:Group>
+	</s:Scroller>
 	
 </views:ExampleViewBase>
