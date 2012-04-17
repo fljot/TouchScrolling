@@ -17,7 +17,6 @@ package com.inreflected.ui.touchScroll
 	import flash.system.Capabilities;
 	import flash.ui.Multitouch;
 	import flash.utils.Timer;
-	import flash.utils.getDefinitionByName;
 	import flash.utils.getTimer;
 
 	import mx.events.FlexEvent;
@@ -171,7 +170,6 @@ package com.inreflected.ui.touchScroll
 		 * @see flash.display.InteractiveObject
 		 */
 		protected var _interactiveTarget:InteractiveObject;
-		protected var _viewportIsFlexComponent:Boolean;
 		protected var _stage:Stage;
 		protected var _lastDragOffsetX:Number;
 		protected var _lastDragOffsetY:Number;
@@ -543,18 +541,7 @@ package com.inreflected.ui.touchScroll
 			if (!viewport)
 				return;
 			
-			_interactiveTarget = _viewport as InteractiveObject;
-			
-			// Flex integration part
-			try {
-				var flexUIComponentDefinition:Class = getDefinitionByName("mx.core::UIComponent") as Class;
-				_viewportIsFlexComponent = (viewport is flexUIComponentDefinition);
-			}
-			catch (err:Error)
-			{
-				_viewportIsFlexComponent = false;
-			}
-			
+			_interactiveTarget = _viewport as InteractiveObject;			
 			
 			panGesture.target = viewport;
 			
@@ -1988,20 +1975,15 @@ package com.inreflected.ui.touchScroll
 				{
 					case "contentWidth":
 					case "contentHeight":						
-						if (_viewportIsFlexComponent)
-						{
-							// Flex integration:
-							// If the content size changed, then the valid scroll position ranges 
-							// may have changed.  In this case, we need to schedule an updateComplete
-							// handler to check and potentially correct the scroll positions.
-							viewport.addEventListener(FlexEvent.UPDATE_COMPLETE, 
-								handleSizeChangeOnUpdateComplete);
-						}
-						else
-						{
-							// Delay resize handling to ensure both width and height are set to new values
-							viewport.addEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
-						}
+						// Flex integration:
+						// If the content size changed, then the valid scroll position ranges 
+						// may have changed.  In this case, we need to schedule an updateComplete
+						// handler to check and potentially correct the scroll positions.
+						viewport.addEventListener(FlexEvent.UPDATE_COMPLETE, 
+							handleSizeChangeOnUpdateComplete);
+						// Safety fallback for non-flex-type of invalidation:
+						// Delay resize handling to ensure both width and height are set to new values
+						viewport.addEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
 						break;
 				}
 			}
@@ -2013,7 +1995,9 @@ package com.inreflected.ui.touchScroll
 		 */
 		private function handleSizeChangeOnUpdateComplete(event:Event):void
 		{
-			viewport.removeEventListener(event.type, handleSizeChangeOnUpdateComplete);
+			viewport.removeEventListener(FlexEvent.UPDATE_COMPLETE,  handleSizeChangeOnUpdateComplete);
+			viewport.removeEventListener(Event.ENTER_FRAME, handleSizeChangeOnUpdateComplete);
+			
 			handleViewportSizeChange();
 		}
 	}
