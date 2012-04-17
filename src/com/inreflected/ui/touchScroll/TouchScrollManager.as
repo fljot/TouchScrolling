@@ -1,7 +1,7 @@
 package com.inreflected.ui.touchScroll 
 {
 	import com.inreflected.core.IDisposable;
-	import com.inreflected.core.IViewport;
+	import com.inreflected.ui.core.IViewport;
 
 	import flash.display.DisplayObject;
 	import flash.display.DisplayObjectContainer;

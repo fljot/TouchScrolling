@@ -1,8 +1,8 @@
 package components
 {
-	import flash.display.DisplayObject;
-	import com.inreflected.core.IViewport;
+	import com.inreflected.ui.core.IViewport;
 
+	import flash.display.DisplayObject;
 	import flash.events.Event;
 	import flash.geom.Rectangle;
 

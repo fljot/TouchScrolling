@@ -1,4 +1,4 @@
-package com.inreflected.core
+package com.inreflected.ui.core
 {
 	import flash.display.Stage;
 	import flash.display.DisplayObjectContainer;

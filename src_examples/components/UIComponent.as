@@ -1,6 +1,6 @@
 package components
 {
-	import com.inreflected.core.IVisualElement;
+	import com.inreflected.ui.core.IVisualElement;
 
 	import flash.display.Sprite;
 	import flash.events.Event;
