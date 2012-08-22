@@ -1,6 +1,6 @@
 h1. TouchScrollManager — touch (kinetic) scrolling for AS3 (Flash).
 
-... because there was no descent available.
+... because there was no descent available for AS3.
 
 
 h3. Usage
