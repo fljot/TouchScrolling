@@ -5,10 +5,8 @@ package com.inreflected.ui.touchScroll
 	import spark.effects.easing.IEaser;
 	import spark.effects.easing.Power;
 
-	import com.inreflected.animation.PathsFollower;
-
+	import flash.display.Shape;
 	import flash.events.Event;
-	import flash.events.IEventDispatcher;
 	import flash.geom.Point;
 	import flash.utils.getTimer;
 
@@ -17,68 +15,58 @@ package com.inreflected.ui.touchScroll
 	 */
 	public class ThrowEffect
 	{
-	    
-	    /**
+		private static const TICKER:Shape = new Shape();
+		/**
 		 *  @private
 		 *  The duration of the settle effect when a throw "bounces" against the end of the list
 		 *  or when we do snap effect (when throw velocity is zero).
 		 */
 		protected static const THROW_SETTLE_TIME:int = 600;
-	    
-	    /**
+		/**
 		 *  @private
 		 */
 		protected static const SETTLE_THROW_VELOCITY:Number = 5;
 		
-	    /**
-	     *  @private
-	     *  The velocity at which we treat throw motion as finished.
-	     *  1 px/frame = framerate/1000 px/ms
-	     */
-	    protected static const STOP_VELOCITY:Number = 0.02;//px per ms
-	    
-	    /**
-	     *  @private
-	     *  The name of the property to be animated for each axis.
-	     *  Setting to null indicates that there is to be no animation
-	     *  along that axis. 
-	     */
-	    public var propertyNameX:String = null;
-	    public var propertyNameY:String = null;
+		/**
+		 *  @private
+		 *  The velocity at which we treat throw motion as finished.
+		 *  1 px/frame = framerate/1000 px/ms
+		 */
+		protected static const STOP_VELOCITY:Number = 0.02;// px per ms
 	
-	    /**
-	     *  @private
-	     *  The initial velocity of the throw animation.
-	     */
-	    public var startingVelocityX:Number = 0;
-	    public var startingVelocityY:Number = 0;
+		/**
+		 *  @private
+		 *  The initial velocity of the throw animation.
+		 */
+		public var startingVelocityX:Number = 0;
+		public var startingVelocityY:Number = 0;
 	
-	    /**
-	     *  @private
-	     *  The starting values for the animated properties.
-	     */
-	    public var startingPositionX:Number = 0;
-	    public var startingPositionY:Number = 0;
+		/**
+		 *  @private
+		 *  The starting values for the animated properties.
+		 */
+		public var startingPositionX:Number = 0;
+		public var startingPositionY:Number = 0;
 	
-	    /**
-	     *  @private
-	     *  The minimum values for the animated properties.
-	     */
-	    public var minPositionX:Number = 0;
-	    public var minPositionY:Number = 0;
+		/**
+		 *  @private
+		 *  The minimum values for the animated properties.
+		 */
+		public var minPositionX:Number = 0;
+		public var minPositionY:Number = 0;
 	
-	    /**
-	     *  @private
-	     *  The maximum values for the animated properties.
-	     */
-	    public var maxPositionX:Number = 0;
-	    public var maxPositionY:Number = 0;
+		/**
+		 *  @private
+		 *  The maximum values for the animated properties.
+		 */
+		public var maxPositionX:Number = 0;
+		public var maxPositionY:Number = 0;
 	
-	    /**
-	     *  @private
-	     *  The rate of deceleration to apply to the velocity.
-	     */
-	    public var decelerationRate:Number;
+		/**
+		 *  @private
+		 *  The rate of deceleration to apply to the velocity.
+		 */
+		public var decelerationRate:Number;
 		
 		public var pull:Boolean;
 		public var bounce:Boolean;
@@ -86,66 +74,46 @@ package com.inreflected.ui.touchScroll
 		
 		public var viewportWidth:Number;
 		public var viewportHeight:Number;
-	    
-	    /**
-	     *  @private
-	     *  The final calculated values for the animated properties.
-	     */
-	    public var finalPosition:Point;
-	    
-	    /**
-	     *  @private
-	     *  This is a callback that, when installed by the client, will be invoked
-	     *  with the final position of the throw in case the client needs to alter it
-	     *  prior to the animation beginning. 
-	     */
-	    public var finalPositionFilterFunction:Function;
+		/**
+		 *  @private
+		 *  The final calculated values for the animated properties.
+		 */
+		public var finalPosition:Point;
+		/**
+		 *  @private
+		 *  This is a callback that, when installed by the client, will be invoked
+		 *  with the final position of the throw in case the client needs to alter it
+		 *  prior to the animation beginning. 
+		 */
+		public var finalPositionFilterFunction:Function;
 		
-		public var onEffectCompleteFunction:Function;
-	    
-	    /**
-	     *  @private
-	     *  Set to true when the effect is only being used to snap an element into position
-	     *  and the initial velocity is zero.
-	     */
-	    public var isSnapping:Boolean = false;
+		public var onUpdateCallback:Function;
+		public var onCompleteCallback:Function;
+		
+		/**
+		 *  @private
+		 *  Set to true when the effect is only being used to snap an element into position
+		 *  and the initial velocity is zero.
+		 */
+		public var isSnapping:Boolean = false;
 	
-	    /**
-	     *  @private
-	     *  The motion paths for X and Y axes
-	     */
-	    protected var horizontalMP:MotionPath = null;
-	    protected var verticalMP:MotionPath = null;
+		/**
+		 *  @private
+		 *  The motion paths for X and Y axes
+		 */
+		protected var horizontalMP:MotionPath = null;
+		protected var verticalMP:MotionPath = null;
 		
 	
 		protected var _effectFollower:PathsFollower = new PathsFollower();
 		protected var _effectStartTime:uint;
+		protected var _effectTarget:ScrollableObjectModel;
 		
 		
-		public function ThrowEffect(target:IEventDispatcher = null)
+		public function ThrowEffect()
 		{
-			this.target = target;
-		}
-		
-		
-		/** @private */
-		private var _target:IEventDispatcher;
-		
-		/**
-		 * 
-		 */
-		public function get target():IEventDispatcher
-		{
-			return _target;
-		}
-		public function set target(value:IEventDispatcher):void
-		{
-			if (_target == value)
-				return;
-			
-			uninstallTarget(target);
-			_target = value;
-			installTarget(target);
+			_effectTarget = new ScrollableObjectModel();
+			_effectFollower.target = _effectTarget;
 		}
 		
 		
@@ -181,11 +149,11 @@ package com.inreflected.ui.touchScroll
 		
 		public function play():void
 		{
-			if (target && !isPlaying)
+			if (!isPlaying)
 			{
 				_isPlaying = true;
 				_effectStartTime = getTimer();
-				target.addEventListener(Event.ENTER_FRAME, target_enterFrameHandler);
+				TICKER.addEventListener(Event.ENTER_FRAME, target_enterFrameHandler);
 			}
 		}
 		
@@ -200,52 +168,48 @@ package com.inreflected.ui.touchScroll
 			var throwEffectMotionPaths:Vector.<MotionPath> = new Vector.<MotionPath>();
 			isSnapping = false;
 			
+			_effectTarget.positionX = startingPositionX;
+			_effectTarget.positionY = startingPositionY;
+			
 			var lastKeyFrameIndex:uint;
 			
 			var horizontalTime:Number = 0;
 			var finalHSP:Number = startingPositionX;
-			horizontalMP = null;
-			if (propertyNameX)
+			horizontalMP = createThrowMotionPath(
+				"positionX",
+				startingVelocityX,
+				startingPositionX,
+				minPositionX,
+				maxPositionX,
+				viewportWidth
+			);
+			
+			if (horizontalMP)
 			{
-				horizontalMP = createThrowMotionPath(
-					propertyNameX,
-					startingVelocityX,
-					startingPositionX,
-					minPositionX,
-					maxPositionX,
-					viewportWidth
-				);
-				
-				if (horizontalMP)
-				{
-					throwEffectMotionPaths.push(horizontalMP);
-					lastKeyFrameIndex = horizontalMP.keyframes.length - 1;
-					horizontalTime = horizontalMP.keyframes[lastKeyFrameIndex].time;
-					finalHSP = Number(horizontalMP.keyframes[lastKeyFrameIndex].value);
-				}
+				throwEffectMotionPaths.push(horizontalMP);
+				lastKeyFrameIndex = horizontalMP.keyframes.length - 1;
+				horizontalTime = horizontalMP.keyframes[lastKeyFrameIndex].time;
+				finalHSP = Number(horizontalMP.keyframes[lastKeyFrameIndex].value);
 			}
 			
 			var verticalTime:Number = 0;
 			var finalVSP:Number = startingPositionY;
 			verticalMP = null;
-			if (propertyNameY)
-			{				
-				verticalMP = createThrowMotionPath(
-					propertyNameY,
-					startingVelocityY,
-					startingPositionY,
-					minPositionY,
-					maxPositionY,
-					viewportHeight
-				);
-				
-				if (verticalMP)
-				{
-					throwEffectMotionPaths.push(verticalMP);
-					lastKeyFrameIndex = verticalMP.keyframes.length - 1;
-					verticalTime = verticalMP.keyframes[lastKeyFrameIndex].time;
-					finalVSP = Number(verticalMP.keyframes[lastKeyFrameIndex].value);
-				}
+			verticalMP = createThrowMotionPath(
+				"positionY",
+				startingVelocityY,
+				startingPositionY,
+				minPositionY,
+				maxPositionY,
+				viewportHeight
+			);
+			
+			if (verticalMP)
+			{
+				throwEffectMotionPaths.push(verticalMP);
+				lastKeyFrameIndex = verticalMP.keyframes.length - 1;
+				verticalTime = verticalMP.keyframes[lastKeyFrameIndex].time;
+				finalVSP = Number(verticalMP.keyframes[lastKeyFrameIndex].value);
 			}
 			
 			if (horizontalMP || verticalMP)
@@ -276,13 +240,13 @@ package com.inreflected.ui.touchScroll
 		
 		public function stop(notifyComplete:Boolean = true):void
 		{
-			if (target && _isPlaying)
+			if (_isPlaying)
 			{
-				target.removeEventListener(Event.ENTER_FRAME, target_enterFrameHandler);
+				TICKER.removeEventListener(Event.ENTER_FRAME, target_enterFrameHandler);
 				_isPlaying = false;
 				if (notifyComplete)
 				{
-					onEffectCompleteFunction();
+					onCompleteCallback();
 				}
 			}
 		}
@@ -290,14 +254,14 @@ package com.inreflected.ui.touchScroll
 		
 		/**
 		 *  @private
-		 *  Calculates the current velocities of the in-progress throw animation   
+		 *  Calculates the current velocities of the in-progress throw animation
 		 */
 		public function getCurrentVelocity():Point
 		{
 			var effectDuration:Number = this.duration;
 			
 			// Get the current position of the existing throw animation
-			var effectTime:Number = _effectFollower.progress * effectDuration || 0;			
+			var effectTime:Number = _effectFollower.progress * effectDuration || 0;
 			
 			var velX:Number = horizontalMP ? getMotionPathCurrentVelocity(horizontalMP, effectTime, effectDuration) : 0;
 			var velY:Number = verticalMP ? getMotionPathCurrentVelocity(verticalMP, effectTime, effectDuration) : 0;
@@ -313,22 +277,6 @@ package com.inreflected.ui.touchScroll
 		//  Private methods
 		//
 		//--------------------------------------------------------------------------
-		
-		protected function installTarget(target:Object):void
-		{
-			_effectFollower.target = target;
-		}
-		
-		
-		protected function uninstallTarget(target:Object):void
-		{
-			if (!target)
-				return;
-			
-			stop(false);
-			_effectFollower.target = null;
-		}
-		
 		
 		/**
 		 *  @private
@@ -603,6 +551,7 @@ package com.inreflected.ui.touchScroll
 				progress = 1;
 			}
 			_effectFollower.progress = progress;
+			onUpdateCallback(_effectTarget.positionX, _effectTarget.positionY);
 			if (progress == 1)
 			{
 				stop();
@@ -610,6 +559,7 @@ package com.inreflected.ui.touchScroll
 		}
 	}
 }
+import spark.effects.animation.MotionPath;
 import spark.effects.easing.EaseInOutBase;
 import spark.effects.easing.IEaser;
 
@@ -632,6 +582,13 @@ class Expo implements IEaser
 	{
 		return k2 * (Math.pow(k1, fraction) - 1);
 	}
+}
+
+
+class ScrollableObjectModel
+{
+	public var positionX:Number;
+	public var positionY:Number;
 }
 
 
@@ -686,4 +643,109 @@ class PartialExponentialCurve extends EaseInOutBase
     {
         return _ymult * (1 - Math.pow(1 - fraction*_xscale, _exponent)); 
     }
+}
+
+/**
+ * @author Pavel fljot
+ */
+class PathsFollower
+{
+	public var target:Object;
+	
+	public var cachedProgress:Number;
+	public var cachedRawProgress:Number;
+
+
+	public function PathsFollower(target:Object = null)
+	{
+		this.target = target;
+		this.cachedProgress = this.cachedRawProgress = 0;
+	}
+	
+	
+	public var motionPaths:Vector.<MotionPath>;
+
+
+	/** 
+	 * Identical to <code>progress</code> except that the value doesn't get re-interpolated between 0 and 1.
+	 * <code>rawProgress</code> (and <code>progress</code>) indicates the follower's position along the motion path. 
+	 * For example, to place the object on the path at the halfway point, you could set its <code>rawProgress</code> 
+	 * to 0.5. You can tween to values that are greater than 1 or less than 0. For example, setting <code>rawProgress</code> 
+	 * to 1.2 also sets <code>progress</code> to 0.2 and setting <code>rawProgress</code> to -0.2 is the 
+	 * same as setting <code>progress</code> to 0.8. If your goal is to tween the PathFollower around a Circle2D twice 
+	 * completely, you could just add 2 to the <code>rawProgress</code> value or use a relative value in the tween, like: <br /><br /><code>
+	 * 
+	 * TweenLite.to(myFollower, 5, {rawProgress:"2"}); // or myFollower.rawProgress + 2
+	 * 
+	 * </code><br /><br />
+	 * 
+	 * Since <code>rawProgress<code> doesn't re-interpolate values to always fitting between 0 and 1, it
+	 * can be useful if you need to find out how many times the PathFollower has wrapped.
+	 * 
+	 * @see #progress
+	 **/
+	public function get rawProgress():Number
+	{
+		return this.cachedRawProgress;
+	}
+
+
+	public function set rawProgress(value:Number):void
+	{
+		this.progress = value;
+	}
+
+
+	/** 
+	 * A value between 0 and 1 that indicates the follower's position along the motion path. For example,
+	 * to place the object on the path at the halfway point, you would set its <code>progress</code> to 0.5.
+	 * You can tween to values that are greater than 1 or less than 0 but the values are simply wrapped. 
+	 * So, for example, setting <code>progress</code> to 1.2 is the same as setting it to 0.2 and -0.2 is the 
+	 * same as 0.8. If your goal is to tween the PathFollower around a Circle2D twice completely, you could just 
+	 * add 2 to the <code>progress</code> value or use a relative value in the tween, like: <br /><br /><code>
+	 * 
+	 * TweenLite.to(myFollower, 5, {progress:"2"}); // or myFollower.progress + 2
+	 * 
+	 * </code><br /><br />
+	 * 
+	 * <code>progress</code> is identical to <code>rawProgress</code> except that <code>rawProgress</code> 
+	 * does not get re-interpolated between 0 and 1. For example, if <code>rawProgress</code> 
+	 * is set to -3.4, <code>progress</code> would be 0.6. <code>rawProgress<code> can be useful if 
+	 * you need to find out how many times the PathFollower has wrapped.
+	 * 
+	 * @see #rawProgress
+	 **/
+	public function get progress():Number
+	{
+		return this.cachedProgress;
+	}
+
+
+	public function set progress(value:Number):void
+	{
+		if (value > 1)
+		{
+			this.cachedRawProgress = value;
+			this.cachedProgress = value - int(value);
+			if (this.cachedProgress == 0)
+			{
+				this.cachedProgress = 1;
+			}
+		}
+		else if (value < 0)
+		{
+			this.cachedRawProgress = value;
+			this.cachedProgress = value - (int(value) - 1);
+		}
+		else
+		{
+			this.cachedRawProgress = int(this.cachedRawProgress) + value;
+			this.cachedProgress = value;
+		}
+		
+		for each (var path:MotionPath in motionPaths)
+		{
+			target[path.property] = path.getValue(cachedProgress);
+		}
+	}
 }
