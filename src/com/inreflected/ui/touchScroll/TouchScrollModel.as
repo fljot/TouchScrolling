@@ -509,10 +509,7 @@ package com.inreflected.ui.touchScroll
 				_positionY = newVSP;
 			}
 			
-			if (positionUpdateCallback != null)
-			{
-				positionUpdateCallback(_positionX, _positionY);
-			}
+			positionUpdateCallback(_positionX, _positionY);
 		}
 		
 		
@@ -672,7 +669,7 @@ package com.inreflected.ui.touchScroll
 		protected function onThrowEffectComplete():void
 		{
 			stop();
-			throwCompleteCallback();
+			throwCompleteCallback && throwCompleteCallback();
 		}
 	}
 }
