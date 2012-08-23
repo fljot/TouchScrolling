@@ -29,6 +29,11 @@ package com.inreflected.ui.touchScroll
 		 *  Minimum velocity needed to start a throw effect, in pixels per millisecond.
 		 */
 		private static const MIN_START_VELOCITY:Number = 0.6 * Capabilities.screenDPI / 1000;
+		/**
+		 * based on 20 pixels on a 252ppi device.
+		 */
+		private static const DIRECTIONAL_LOCK_THRESHOLD_DISTANCE:Number = Math.round(20 / 252 * Capabilities.screenDPI);
+		private static const DIRECTIONAL_LOCK_THRESHOLD_ANGLE:Number = 20 * Math.PI / 180;
 		
 		public var positionUpdateCallback:Function;
 		public var throwCompleteCallback:Function;
@@ -60,6 +65,9 @@ package com.inreflected.ui.touchScroll
 		 * @default false
 		 */
 		public var directionalLock:Boolean;
+		public var directionalLockThresholdDistance:Number = DIRECTIONAL_LOCK_THRESHOLD_DISTANCE;
+		public var directionalLockThresholdAngle:Number = DIRECTIONAL_LOCK_THRESHOLD_ANGLE;
+		
 		/**
 		 * Minimum velocity needed to start a throw effect, in pixels per millisecond.
 		 * 
@@ -104,6 +112,9 @@ package com.inreflected.ui.touchScroll
 		protected var _cummulativeOffsetY:Number;
 		
 		protected var _directionalLockTimer:Timer = new Timer(600, 1);
+		protected var _directionalLockThresholdAngleCoefficient:Number;
+		protected var _directionalLockCummulativeOffsetX:Number = 0;
+		protected var _directionalLockCummulativeOffsetY:Number = 0;
 		protected var _directionLockTimerStartPoint:Point;
 		
 		protected var _velocityCalculator:VelocityCalculator = new VelocityCalculator();
@@ -278,40 +289,67 @@ package com.inreflected.ui.touchScroll
 			
 			_isScrolling = true;
 			
+			if (directionalLock)
+			{
+				// TODO: optimize of fuckit?
+				_directionalLockThresholdAngleCoefficient = Math.sin(directionalLockThresholdAngle) * 2 / Math.sqrt(2);
+			} 
+			
 			onDragUpdate(dx, dy);
 		}
 		
 		
 		public function onDragUpdate(dx:Number, dy:Number):void
 		{
-//			if (directionalLock && canScrollHorizontally && canScrollVertically)
-//			{
-//				if (!_directionalLockTimer.running && !_lockHorizontal && !_lockVertical)
-//				{
-//					var angleInRadians:Number = Math.atan2(dy, dx);
-//					var andleInDegrees:Number = angleInRadians * (180 / Math.PI);
-//					
-//					const ANGLE:Number = 20;
-//					if ((-ANGLE < andleInDegrees && andleInDegrees < ANGLE) ||
-//						(180-ANGLE < andleInDegrees || andleInDegrees < -180+ANGLE))
-//					{
-//						_lockHorizontal = true;
-//					}
-//					else
-//					if ((-90-ANGLE < andleInDegrees && andleInDegrees < -90+ANGLE) ||
-//						(90-ANGLE < andleInDegrees && andleInDegrees < 90+ANGLE))
-//					{
-//						_lockVertical = true;
-//					}
-//					restartDirectionalLockWatch();
-//				}
+			if (directionalLock && canScrollHorizontally && canScrollVertically)
+			{
+				_directionalLockCummulativeOffsetX += dx;
+				_directionalLockCummulativeOffsetY += dy;
+				
+				if (!_directionalLockTimer.running && !_lockHorizontal && !_lockVertical)
+				{
+					// We have not decided yet wheather locked or free scrolling
+					
+					//TODO: optimization. Options:
+					// 1. precalculate square of directionalLockThresholdDistance
+					// 2. use square zone instead of circle
+					const dSqr:Number = Math.sqrt(_directionalLockCummulativeOffsetX * _directionalLockCummulativeOffsetX +
+						_directionalLockCummulativeOffsetY * _directionalLockCummulativeOffsetY);
+					if (dSqr >= directionalLockThresholdDistance)
+					{
+						// We are out of our "directional lock safe zone"
+						// so we have to make decision now
+						
+						const angle:Number = Math.atan2(_directionalLockCummulativeOffsetY, _directionalLockCummulativeOffsetX);
+						const threshold:Number = Math.sin(directionalLockThresholdAngle);
+						if (Math.abs(Math.sin(angle)) < threshold)
+						{
+							_lockHorizontal = true;
+							trace("directionalLock set to 'horizontal'");
+						}
+						else
+						if (Math.abs(Math.cos(angle)) < threshold)
+						{
+							_lockVertical = true;
+							trace("directionalLock set to 'vertical'");
+						}
+						else
+						{
+							trace("directionalLock set to 'free'");
+						}
+												
+						restartDirectionalLockWatch();
+					}
+				}
 ////				else if (!directionalLockTimer.running ||
 ////					(Math.abs(event.offsetX) >= Gesture.DEFAULT_SLOP && Math.abs(event.offsetY) >= Gesture.DEFAULT_SLOP))
-//				else if (Math.abs(dx) >= Gesture.DEFAULT_SLOP || Math.abs(dy) >= Gesture.DEFAULT_SLOP)
-//				{
-//					restartDirectionalLockWatch();
-//				}
-//			}
+				else if (Math.abs(_directionalLockCummulativeOffsetX) >= directionalLockThresholdDistance ||
+						 Math.abs(_directionalLockCummulativeOffsetY) >= directionalLockThresholdDistance)
+				{
+					// Looks like we are moving intensively enough
+					restartDirectionalLockWatch();
+				}
+			}
 			
 			if (_lockVertical) dx = 0;
 			if (_lockHorizontal) dy = 0;
@@ -520,9 +558,11 @@ package com.inreflected.ui.touchScroll
 		
 		protected function restartDirectionalLockWatch():void
 		{
+			_directionalLockCummulativeOffsetX = 0;
+			_directionalLockCummulativeOffsetY = 0;
 //			_directionLockTimerStartPoint = panGesture.location;
-//			_directionalLockTimer.reset();
-//			_directionalLockTimer.start();
+			_directionalLockTimer.reset();
+			_directionalLockTimer.start();
 		}
 		
 		
@@ -653,7 +693,8 @@ package com.inreflected.ui.touchScroll
 		{
 //			if (_directionLockTimerStartPoint.subtract(panGesture.location).length < Gesture.DEFAULT_SLOP)
 //			{
-//				_lockHorizontal = _lockVertical = false;
+				_lockHorizontal = _lockVertical = false;
+				trace("directionalLock reset");
 //			}
 //			else
 //			{
