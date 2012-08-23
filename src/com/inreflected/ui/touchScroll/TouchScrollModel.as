@@ -224,6 +224,10 @@ package com.inreflected.ui.touchScroll
 		
 		public function dispose():void
 		{
+			if (isScrolling)
+			{
+				stop();
+			}
 			if (_directionalLockTimer)
 			{
 				_directionalLockTimer.stop();
