@@ -141,7 +141,8 @@ package com.inreflected.ui.touchScroll
 		}
 		public function set scrollBounds(value:Rectangle):void
 		{
-			if (_scrollBounds == value)
+			if (_scrollBounds == value ||
+				(_scrollBounds && value && _scrollBounds.equals(value)))
 				return;
 			
 			_scrollBounds = value ? value.clone() : null;
