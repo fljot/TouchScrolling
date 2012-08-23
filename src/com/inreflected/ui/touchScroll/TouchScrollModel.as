@@ -261,9 +261,10 @@ package com.inreflected.ui.touchScroll
 				
 				clipToScrollBounds();
 				
-				if (directionalLock && (_lockHorizontal || _lockVertical))
+				if (directionalLock)
 				{
-					// touch while throw effect playing with some direction locked
+					// Touch while throw effect playing with some direction locked.
+					// We want to preserve previous locked or free scrolling.
 					
 					restartDirectionalLockWatch();
 				}
@@ -278,8 +279,6 @@ package com.inreflected.ui.touchScroll
 			_cummulativeOffsetX = _cummulativeOffsetY = 0;
 			
 			_velocityCalculator.reset();
-			
-			_directionalLockTimer.reset();
 		}
 		
 		
