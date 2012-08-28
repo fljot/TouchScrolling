@@ -13,3 +13,8 @@ build.properties
 
 build/*/*.p12
 build/*/*.mobileprovision
+
+*.ipr
+*.iml
+*.iws
+*.idea
