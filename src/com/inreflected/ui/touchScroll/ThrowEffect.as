@@ -1,9 +1,9 @@
 package com.inreflected.ui.touchScroll
 {
-	import spark.effects.animation.Keyframe;
-	import spark.effects.animation.MotionPath;
-	import spark.effects.easing.IEaser;
-	import spark.effects.easing.Power;
+	import com.inreflected.forks.spark.effects.animation.Keyframe;
+	import com.inreflected.forks.spark.effects.animation.MotionPath;
+	import com.inreflected.forks.spark.effects.easing.IEaser;
+	import com.inreflected.forks.spark.effects.easing.Power;
 
 	import flash.display.Shape;
 	import flash.events.Event;
@@ -26,52 +26,52 @@ package com.inreflected.ui.touchScroll
 		 *  @private
 		 */
 		protected static const SETTLE_THROW_VELOCITY:Number = 5;
-		
+
 		/**
 		 *  @private
 		 *  The velocity at which we treat throw motion as finished.
 		 *  1 px/frame = framerate/1000 px/ms
 		 */
 		protected static const STOP_VELOCITY:Number = 0.02;// px per ms
-	
+
 		/**
 		 *  @private
 		 *  The initial velocity of the throw animation.
 		 */
 		public var startingVelocityX:Number = 0;
 		public var startingVelocityY:Number = 0;
-	
+
 		/**
 		 *  @private
 		 *  The starting values for the animated properties.
 		 */
 		public var startingPositionX:Number = 0;
 		public var startingPositionY:Number = 0;
-	
+
 		/**
 		 *  @private
 		 *  The minimum values for the animated properties.
 		 */
 		public var minPositionX:Number = 0;
 		public var minPositionY:Number = 0;
-	
+
 		/**
 		 *  @private
 		 *  The maximum values for the animated properties.
 		 */
 		public var maxPositionX:Number = 0;
 		public var maxPositionY:Number = 0;
-	
+
 		/**
 		 *  @private
 		 *  The rate of deceleration to apply to the velocity.
 		 */
 		public var decelerationRate:Number;
-		
+
 		public var pull:Boolean;
 		public var bounce:Boolean;
 		public var maxBounce:Number;
-		
+
 		public var viewportWidth:Number;
 		public var viewportHeight:Number;
 		/**
@@ -83,70 +83,70 @@ package com.inreflected.ui.touchScroll
 		 *  @private
 		 *  This is a callback that, when installed by the client, will be invoked
 		 *  with the final position of the throw in case the client needs to alter it
-		 *  prior to the animation beginning. 
+		 *  prior to the animation beginning.
 		 */
 		public var finalPositionFilterFunction:Function;
-		
+
 		public var onUpdateCallback:Function;
 		public var onCompleteCallback:Function;
-		
+
 		/**
 		 *  @private
 		 *  Set to true when the effect is only being used to snap an element into position
 		 *  and the initial velocity is zero.
 		 */
 		public var isSnapping:Boolean = false;
-	
+
 		/**
 		 *  @private
 		 *  The motion paths for X and Y axes
 		 */
 		protected var horizontalMP:MotionPath = null;
 		protected var verticalMP:MotionPath = null;
-		
-	
+
+
 		protected var _effectFollower:PathsFollower = new PathsFollower();
 		protected var _effectStartTime:uint;
 		protected var _effectTarget:ScrollableObjectModel;
-		
-		
+
+
 		public function ThrowEffect()
 		{
 			_effectTarget = new ScrollableObjectModel();
 			_effectFollower.target = _effectTarget;
 		}
-		
-		
+
+
 		/** @private */
 		protected var _duration:uint;
-		
+
 		/**
-		 * 
+		 *
 		 */
 		public function get duration():uint
 		{
 			return _duration;
 		}
-		
-		
+
+
 		/** @private */
 		private var _isPlaying:Boolean;
-		
+
 		/**
-		 * 
+		 *
 		 */
 		public function get isPlaying():Boolean
 		{
 			return _isPlaying;
 		}
-		
-		
+
+
 		//--------------------------------------------------------------------------
 		//
 		//  Public methods
 		//
 		//--------------------------------------------------------------------------
-		
+
 		public function play():void
 		{
 			if (!isPlaying)
@@ -156,8 +156,8 @@ package com.inreflected.ui.touchScroll
 				TICKER.addEventListener(Event.ENTER_FRAME, target_enterFrameHandler);
 			}
 		}
-		
-		
+
+
 		/**
 		 *  @private
 		 *  Once all the animation variables are set (velocity, position, etc.), call this
@@ -167,12 +167,12 @@ package com.inreflected.ui.touchScroll
 		{
 			var throwEffectMotionPaths:Vector.<MotionPath> = new Vector.<MotionPath>();
 			isSnapping = false;
-			
+
 			_effectTarget.positionX = startingPositionX;
 			_effectTarget.positionY = startingPositionY;
-			
+
 			var lastKeyFrameIndex:uint;
-			
+
 			var horizontalTime:Number = 0;
 			var finalHSP:Number = startingPositionX;
 			horizontalMP = createThrowMotionPath(
@@ -183,7 +183,7 @@ package com.inreflected.ui.touchScroll
 				maxPositionX,
 				viewportWidth
 			);
-			
+
 			if (horizontalMP)
 			{
 				throwEffectMotionPaths.push(horizontalMP);
@@ -191,7 +191,7 @@ package com.inreflected.ui.touchScroll
 				horizontalTime = horizontalMP.keyframes[lastKeyFrameIndex].time;
 				finalHSP = Number(horizontalMP.keyframes[lastKeyFrameIndex].value);
 			}
-			
+
 			var verticalTime:Number = 0;
 			var finalVSP:Number = startingPositionY;
 			verticalMP = null;
@@ -203,7 +203,7 @@ package com.inreflected.ui.touchScroll
 				maxPositionY,
 				viewportHeight
 			);
-			
+
 			if (verticalMP)
 			{
 				throwEffectMotionPaths.push(verticalMP);
@@ -211,7 +211,7 @@ package com.inreflected.ui.touchScroll
 				verticalTime = verticalMP.keyframes[lastKeyFrameIndex].time;
 				finalVSP = Number(verticalMP.keyframes[lastKeyFrameIndex].value);
 			}
-			
+
 			if (horizontalMP || verticalMP)
 			{
 				// Fix motion paths to have visually independent durations for axis tweens
@@ -226,18 +226,18 @@ package com.inreflected.ui.touchScroll
 						addKeyframe(verticalMP, horizontalTime, finalVSP, new Power());
 					}
 				}
-			
+
 				_duration = Math.max(horizontalTime, verticalTime);
 				_effectFollower.motionPaths = throwEffectMotionPaths;
 				_effectFollower.progress = 0;
 				finalPosition = new Point(finalHSP, finalVSP);
 				return true;
 			}
-			
+
 			return false;
 		}
-		
-		
+
+
 		public function stop(notifyComplete:Boolean = true):void
 		{
 			if (_isPlaying)
@@ -250,8 +250,8 @@ package com.inreflected.ui.touchScroll
 				}
 			}
 		}
-		
-		
+
+
 		/**
 		 *  @private
 		 *  Calculates the current velocities of the in-progress throw animation
@@ -259,25 +259,25 @@ package com.inreflected.ui.touchScroll
 		public function getCurrentVelocity():Point
 		{
 			var effectDuration:Number = this.duration;
-			
+
 			// Get the current position of the existing throw animation
 			var effectTime:Number = _effectFollower.progress * effectDuration || 0;
-			
+
 			var velX:Number = horizontalMP ? getMotionPathCurrentVelocity(horizontalMP, effectTime, effectDuration) : 0;
 			var velY:Number = verticalMP ? getMotionPathCurrentVelocity(verticalMP, effectTime, effectDuration) : 0;
-			
+
 			return new Point(velX, velY);
 		}
-		
-		
-		
-		
+
+
+
+
 		//--------------------------------------------------------------------------
 		//
 		//  Private methods
 		//
 		//--------------------------------------------------------------------------
-		
+
 		/**
 		 *  @private
 		 */
@@ -293,24 +293,24 @@ package com.inreflected.ui.touchScroll
 			// We want to solve for "t" in this equasion: V0*d^t - Vstop = 0.
 			// d^T = Vstop/V0
 			// t/effect duration/ = T = log(Vstop/V0) / log(d)
-			
+
 			// The actual position formula is integral of V(t):
 			// S(t) = V0/log(d) * d^t + C, where C is some constant.
 			// S(t=0) must be 0, so C = -V0/log(d) and so position formula is:
 			// S(t) = V0/log(d) * (d^t - 1)
 			// so final position is S(t=T) = (Vstop - V0) / log(d)
-			
+
 			// The condition has pure mathematical purpose: not to have negative time.
 			var absVelocity:Number = velocity > 0 ? velocity : -velocity;
 			var time:int = absVelocity <= STOP_VELOCITY ? 0 : Math.log(STOP_VELOCITY / absVelocity) / Math.log(decelerationRate);
-			
+
 			return time;
 		}
-		
-		
+
+
 		/**
 		 *  @private
-		 *  A utility function to add a new keyframe to the motion path and return the frame time.  
+		 *  A utility function to add a new keyframe to the motion path and return the frame time.
 		 */
 		protected function addKeyframe(motionPath:MotionPath, time:Number, position:Number, easer:IEaser):Number
 		{
@@ -319,8 +319,8 @@ package com.inreflected.ui.touchScroll
 			motionPath.keyframes.push(keyframe);
 			return time;
 		}
-		
-		
+
+
 		/**
 		 *  @private
 		 *  This function builds a motion path that reflects the starting conditions (position, velocity)
@@ -334,7 +334,7 @@ package com.inreflected.ui.touchScroll
 			var effectTime:Number;
 			var alignedPosition:Number;
 			var decelerationRate:Number = this.decelerationRate;
-			
+
 			// First, we handle the case where the velocity is zero (finger wasn't significantly moving when lifted).
 			// Ordinarily, we do nothing in this case, but if the list is currently scrolled past its end (i.e. "pulled"),
 			// we need to have the animation move it back so none of the empty space is visible.
@@ -347,34 +347,34 @@ package com.inreflected.ui.touchScroll
 					// cubic easer curve so the snap has high initial velocity and
 					// gradually decelerates toward the resting point.
 					position = position < minPosition ? minPosition : maxPosition;
-					
+
 					if (finalPositionFilterFunction != null)
 					{
 						position = finalPositionFilterFunction(position, propertyName);
 					}
-					
+
 					//FIXME: why not alignedPosition and isSnapping = true?
-					
+
 					nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, position, new Expo(SETTLE_THROW_VELOCITY, STOP_VELOCITY));
 				}
 				else
 				{
 					// See if we need to snap into alignment
 					alignedPosition = position;
-					
+
 					if (finalPositionFilterFunction != null)
 					{
 						alignedPosition = finalPositionFilterFunction(position, propertyName);
 					}
-					
+
 					if (alignedPosition == position)
 						return null;
-					
+
 					isSnapping = true;
 					nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, alignedPosition, new Expo(SETTLE_THROW_VELOCITY, STOP_VELOCITY));
 				}
 			}
-			
+
 			// Each iteration of this loop adds one of more keyframes to the motion path and then
 			// updates the velocity and position values.  Once the velocity has decayed to zero,
 			// the motion path is complete.
@@ -387,10 +387,10 @@ package com.inreflected.ui.touchScroll
 					// and the velocity is directed further beyond
 					// the end. In this case we want to overshoot the end of the list and then
 					// settle back to it.
-					
+
 					// The throw is STARTED beyond the end / on the edge
 					const throwJustStartedBeyondBounds:Boolean = (effectTime != effectTime);//faster isNaN
-					
+
 					if (throwJustStartedBeyondBounds)
 					{
 						if (!pull && (position == minPosition || position == maxPosition))
@@ -398,22 +398,22 @@ package com.inreflected.ui.touchScroll
 							// no throw applied
 							return null;
 						}
-						
+
 						// so we want to minimize overshoot and effect time (but not totally)
 						// to have something more close to regular settle effect.
 						decelerationRate *= 0.9;
 					}
-					
-					
+
+
 					if (bounce || throwJustStartedBeyondBounds)
 					{
 						var settlePosition:Number = position < minPosition ? minPosition : maxPosition;
-						
+
 						if (finalPositionFilterFunction != null)
 						{
 							settlePosition = finalPositionFilterFunction(settlePosition, propertyName);
 						}
-						
+
 						if (!throwJustStartedBeyondBounds)
 						{
 							// Reduce decelerationFactor as velocity increases (to make overshoot
@@ -421,13 +421,13 @@ package com.inreflected.ui.touchScroll
 							decelerationRate *= 0.98 * Math.pow(0.998, velocity > 0 ? velocity : -velocity);
 						}
 						var overshootTime:uint = calculateThrowEffectTime(velocity, decelerationRate);
-						
+
 						var overshootPosition:Number = Math.round(position + (velocity - STOP_VELOCITY) / Math.log(decelerationRate));
-						
+
 						if (!throwJustStartedBeyondBounds)
 						{
 							// We want to limit overshootPosition only for the bounce, not "pull&throw"
-							
+
 							var maxOvershootDistance:Number = maxBounce * viewportSize;
 							var adjustedOvershootPosition:Number = Math.min(Math.max(minPosition - maxOvershootDistance, overshootPosition), maxPosition + maxOvershootDistance);
 							if (adjustedOvershootPosition != overshootPosition)
@@ -439,22 +439,26 @@ package com.inreflected.ui.touchScroll
 								overshootTime = calculateThrowEffectTime(velocity, decelerationRate);
 							}
 						}
-						
+
 						nowTime = addKeyframe(motionPath, nowTime + overshootTime, overshootPosition, new Expo(velocity, STOP_VELOCITY));
 						nowTime = addKeyframe(motionPath, nowTime + THROW_SETTLE_TIME, settlePosition, new Expo(SETTLE_THROW_VELOCITY, STOP_VELOCITY));
 					}
-					
+
 					// Clear the velocity to indicate that the motion path is complete.
 					velocity = 0;
 				}
 				else
 				{
 					// Here we're going to do a "normal" throw.
-					
+
 					effectTime = calculateThrowEffectTime(velocity, decelerationRate);
-					
+
 					var finalPosition:Number = Math.round(position + (velocity - STOP_VELOCITY) / Math.log(decelerationRate));
-					
+					CONFIG::Debug
+					{
+						trace("finalPosition args:", position,  velocity, finalPosition);
+					}
+
 					if ((position < minPosition && finalPosition < minPosition) ||
 						(position > maxPosition && finalPosition > maxPosition))
 					{
@@ -464,7 +468,7 @@ package com.inreflected.ui.touchScroll
 						velocity = 0;
 						return createThrowMotionPath(propertyName, velocity, position, minPosition, maxPosition, viewportSize);
 					}
-					
+
 					if (finalPosition < minPosition || finalPosition > maxPosition)
 					{
 						// The throw is going to hit the end of the list.  In this case we need to clip the
@@ -472,26 +476,26 @@ package com.inreflected.ui.touchScroll
 						// it would if we were allowing the throw to go beyond the end of the list.  But the
 						// keyframe we add here will stop exactly at the end.  The subsequent loop iteration
 						// will add keyframes that describe the overshoot & settle behavior.
-						
+
 						var edgePosition:Number = finalPosition < minPosition ? minPosition : maxPosition;
-						
+
 						//TODO: explanation comment
 						var partialTime:Number = Math.log((velocity + Math.log(decelerationRate)*(position - edgePosition))/velocity) / Math.log(decelerationRate);
 						if (partialTime != partialTime)//isNaN
 						{
-							throw new Error();
+							throw new Error("partialTime != partialTime");
 						}
-						
+
 						// PartialExpo creates a portion of the throw easer curve, but scaled up to fill the
 						// specified duration.
 						nowTime = addKeyframe(motionPath, nowTime + partialTime, edgePosition, new PartialExpo(velocity, STOP_VELOCITY, partialTime / effectTime));
-						
+
 						// Set the position just past the end of the list for the next loop iteration.
 						if (finalPosition < minPosition)
 							position = minPosition - 1;
 						if (finalPosition > maxPosition)
 							position = maxPosition + 1;
-						
+
 						// Set the velocity for the next loop iteration.  Make sure it matches the actual velocity in effect when the
 						// throw reaches the end of the list.
 						velocity = velocity * Math.pow(decelerationRate, partialTime);
@@ -501,17 +505,17 @@ package com.inreflected.ui.touchScroll
 						// This is the simplest case.  The throw both begins and ends on the list (i.e. not past the
 						// end of the list).  We create a single keyframe and clear the velocity to indicate that the
 						// motion path is complete.
-						
+
 						if (isNaN(finalPosition))
 						{
 							// temporary for debug reasons. I experienced NaN once
-							throw new Error("");
+							throw new Error("finalPosition is NaN");
 						}
 						if (finalPositionFilterFunction != null)
 						{
 							finalPosition = finalPositionFilterFunction(finalPosition, propertyName);
 						}
-						
+
 						nowTime = addKeyframe(motionPath, nowTime + effectTime, finalPosition, new Expo(velocity, STOP_VELOCITY));
 						velocity = 0;
 					}
@@ -519,17 +523,17 @@ package com.inreflected.ui.touchScroll
 			}
 			return motionPath;
 		}
-		
-		
+
+
 		/**
 		 *  @private
-		 *  Helper function for getCurrentVelocity.  
+		 *  Helper function for getCurrentVelocity.
 		 */
 		private function getMotionPathCurrentVelocity(mp:MotionPath, currentTime:Number, totalTime:Number):Number
 		{
 			// Determine the fraction of the effect that has already played.
 			var fraction:Number = currentTime / totalTime;
-			
+
 			// Now we need to determine the effective velocity at the effect's current position.
 			// Here we use a "poor man's" approximation that doesn't require us to know any of the
 			// derivative functions associated with the motion path.  We sample the position at two
@@ -541,8 +545,8 @@ package com.inreflected.ui.touchScroll
 			var value2:Number = Number(mp.getValue(fraction + (TINY_DELTA_TIME / totalTime)));
 			return (value2 - value1) / TINY_DELTA_TIME;
 		}
-		
-		
+
+
 		private function target_enterFrameHandler(event:Event):void
 		{
 			var progress:Number = (getTimer() - _effectStartTime) / _duration;
@@ -559,25 +563,25 @@ package com.inreflected.ui.touchScroll
 		}
 	}
 }
-import spark.effects.animation.MotionPath;
-import spark.effects.easing.EaseInOutBase;
-import spark.effects.easing.IEaser;
+import com.inreflected.forks.spark.effects.animation.MotionPath;
+import com.inreflected.forks.spark.effects.easing.EaseInOutBase;
+import com.inreflected.forks.spark.effects.easing.IEaser;
 
 class Expo implements IEaser
-{		
+{
 	private var k1:Number;
 	private var k2:Number;
-	
-	
+
+
 	public function Expo(v0:Number, vStop:Number = 0.01)
 	{
 		v0 = v0 < 0 ? -v0 : v0;
-		
+
 		k1 = vStop / v0;
 		k2 = 1 / (k1 - 1);
 	}
-	
-	
+
+
 	public function ease(fraction:Number):Number
 	{
 		return k2 * (Math.pow(k1, fraction) - 1);
@@ -592,56 +596,56 @@ class ScrollableObjectModel
 }
 
 
-    
+
 /**
  *  @private
- *  A custom ease-out-only easer class which animates along a specified 
- *  portion of an exponential curve.  
+ *  A custom ease-out-only easer class which animates along a specified
+ *  portion of an exponential curve.
  */
 class PartialExpo extends Expo
 {
     private var _xscale:Number;
     private var _ymult:Number;
-    
-    
+
+
     public function PartialExpo(v0:Number, vStop:Number, xscale:Number)
     {
         super(v0, vStop);
-        
+
         _xscale = xscale;
         _ymult = 1 / super.ease(_xscale);
     }
-    
+
     override public function ease(fraction:Number):Number
     {
-        return _ymult * super.ease(fraction * _xscale); 
+        return _ymult * super.ease(fraction * _xscale);
     }
 }
-    
+
 /**
  *  @private
- *  A custom ease-out-only easer class which animates along a specified 
- *  portion of an exponential curve.  
+ *  A custom ease-out-only easer class which animates along a specified
+ *  portion of an exponential curve.
  */
 class PartialExponentialCurve extends EaseInOutBase
 {
     private var _xscale:Number;
     private var _ymult:Number;
     private var _exponent:Number;
-    
-    
+
+
     public function PartialExponentialCurve(exponent:Number, xscale:Number)
     {
         super(0);
-        
+
         _exponent = exponent;
         _xscale = xscale;
         _ymult = 1 / (1 - Math.pow(1 - _xscale, _exponent));
     }
-    
+
     override protected function easeOut(fraction:Number):Number
     {
-        return _ymult * (1 - Math.pow(1 - fraction*_xscale, _exponent)); 
+        return _ymult * (1 - Math.pow(1 - fraction*_xscale, _exponent));
     }
 }
 
@@ -651,7 +655,7 @@ class PartialExponentialCurve extends EaseInOutBase
 class PathsFollower
 {
 	public var target:Object;
-	
+
 	public var cachedProgress:Number;
 	public var cachedRawProgress:Number;
 
@@ -661,27 +665,27 @@ class PathsFollower
 		this.target = target;
 		this.cachedProgress = this.cachedRawProgress = 0;
 	}
-	
-	
+
+
 	public var motionPaths:Vector.<MotionPath>;
 
 
-	/** 
+	/**
 	 * Identical to <code>progress</code> except that the value doesn't get re-interpolated between 0 and 1.
-	 * <code>rawProgress</code> (and <code>progress</code>) indicates the follower's position along the motion path. 
-	 * For example, to place the object on the path at the halfway point, you could set its <code>rawProgress</code> 
-	 * to 0.5. You can tween to values that are greater than 1 or less than 0. For example, setting <code>rawProgress</code> 
-	 * to 1.2 also sets <code>progress</code> to 0.2 and setting <code>rawProgress</code> to -0.2 is the 
-	 * same as setting <code>progress</code> to 0.8. If your goal is to tween the PathFollower around a Circle2D twice 
+	 * <code>rawProgress</code> (and <code>progress</code>) indicates the follower's position along the motion path.
+	 * For example, to place the object on the path at the halfway point, you could set its <code>rawProgress</code>
+	 * to 0.5. You can tween to values that are greater than 1 or less than 0. For example, setting <code>rawProgress</code>
+	 * to 1.2 also sets <code>progress</code> to 0.2 and setting <code>rawProgress</code> to -0.2 is the
+	 * same as setting <code>progress</code> to 0.8. If your goal is to tween the PathFollower around a Circle2D twice
 	 * completely, you could just add 2 to the <code>rawProgress</code> value or use a relative value in the tween, like: <br /><br /><code>
-	 * 
+	 *
 	 * TweenLite.to(myFollower, 5, {rawProgress:"2"}); // or myFollower.rawProgress + 2
-	 * 
+	 *
 	 * </code><br /><br />
-	 * 
+	 *
 	 * Since <code>rawProgress<code> doesn't re-interpolate values to always fitting between 0 and 1, it
 	 * can be useful if you need to find out how many times the PathFollower has wrapped.
-	 * 
+	 *
 	 * @see #progress
 	 **/
 	public function get rawProgress():Number
@@ -696,23 +700,23 @@ class PathsFollower
 	}
 
 
-	/** 
+	/**
 	 * A value between 0 and 1 that indicates the follower's position along the motion path. For example,
 	 * to place the object on the path at the halfway point, you would set its <code>progress</code> to 0.5.
-	 * You can tween to values that are greater than 1 or less than 0 but the values are simply wrapped. 
-	 * So, for example, setting <code>progress</code> to 1.2 is the same as setting it to 0.2 and -0.2 is the 
-	 * same as 0.8. If your goal is to tween the PathFollower around a Circle2D twice completely, you could just 
+	 * You can tween to values that are greater than 1 or less than 0 but the values are simply wrapped.
+	 * So, for example, setting <code>progress</code> to 1.2 is the same as setting it to 0.2 and -0.2 is the
+	 * same as 0.8. If your goal is to tween the PathFollower around a Circle2D twice completely, you could just
 	 * add 2 to the <code>progress</code> value or use a relative value in the tween, like: <br /><br /><code>
-	 * 
+	 *
 	 * TweenLite.to(myFollower, 5, {progress:"2"}); // or myFollower.progress + 2
-	 * 
+	 *
 	 * </code><br /><br />
-	 * 
-	 * <code>progress</code> is identical to <code>rawProgress</code> except that <code>rawProgress</code> 
-	 * does not get re-interpolated between 0 and 1. For example, if <code>rawProgress</code> 
-	 * is set to -3.4, <code>progress</code> would be 0.6. <code>rawProgress<code> can be useful if 
+	 *
+	 * <code>progress</code> is identical to <code>rawProgress</code> except that <code>rawProgress</code>
+	 * does not get re-interpolated between 0 and 1. For example, if <code>rawProgress</code>
+	 * is set to -3.4, <code>progress</code> would be 0.6. <code>rawProgress<code> can be useful if
 	 * you need to find out how many times the PathFollower has wrapped.
-	 * 
+	 *
 	 * @see #rawProgress
 	 **/
 	public function get progress():Number
@@ -742,7 +746,7 @@ class PathsFollower
 			this.cachedRawProgress = int(this.cachedRawProgress) + value;
 			this.cachedProgress = value;
 		}
-		
+
 		for each (var path:MotionPath in motionPaths)
 		{
 			target[path.property] = path.getValue(cachedProgress);
