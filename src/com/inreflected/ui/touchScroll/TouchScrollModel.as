@@ -92,8 +92,8 @@ package com.inreflected.ui.touchScroll
 		public var maxBounce:Number;
 		
 		
-		protected var _viewportWidth:Number;
-		protected var _viewportHeight:Number;
+		protected var _viewportWidth:Number = 0;
+		protected var _viewportHeight:Number = 0;
 		protected var _positionX:Number;
 		protected var _positionY:Number;
 		/**
@@ -213,8 +213,18 @@ package com.inreflected.ui.touchScroll
 		}
 		
 		
+		/**
+		 * Viewport size affects pull and bounce effects only.
+		 * (So changing it is at any time should not bring any critical problems)
+		 */
 		public function setViewportSize(width:Number, height:Number):void
 		{
+			if (!(width >= 0) || !(height >= 0))
+			{
+				throw new ArgumentError("Viewport dimentions must be non negative. " +
+				"Passed values: width = " + width + ", height = " + height);
+			}
+			
 			_viewportWidth = width;
 			_viewportHeight = height;
 		}
