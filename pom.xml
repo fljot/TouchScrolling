@@ -35,6 +35,16 @@
 							<value>false</value>
 						</property>
 					</defines>
+					<includeClasses>
+						<scan>
+							<includes>
+								<include>**</include>
+							</includes>
+							<excludes>
+								<exclude>com.inreflected.ui.touchScroll.TouchScrollManager</exclude>
+							</excludes>
+						</scan>
+					</includeClasses>
 				</configuration>
 				<dependencies>
 					<dependency>
