@@ -111,7 +111,7 @@ public class NumberInterpolator
      *  @playerversion AIR 1.5
      *  @productversion Flex 4
      */
-    public function increment(baseValue:Number, incrementValue:Number):Object
+    public function increment(baseValue:Number, incrementValue:Number):Number
     {
         return baseValue + incrementValue;
     }
@@ -124,7 +124,7 @@ public class NumberInterpolator
      *  @playerversion AIR 1.5
      *  @productversion Flex 4
      */
-   public function decrement(baseValue:Number, decrementValue:Number):Object
+   public function decrement(baseValue:Number, decrementValue:Number):Number
    {
         return baseValue - decrementValue;
    }
