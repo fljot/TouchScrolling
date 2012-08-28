@@ -242,23 +242,25 @@ public class MotionPath
         if (!keyframes)
             return null;
         var n:int = keyframes.length;
-        if (n == 2 && keyframes[1].timeFraction == 1)
+		const keyframe : Keyframe = keyframes[0];
+		const nextFrame : Keyframe = keyframes[1];
+		if (n == 2 && nextFrame.timeFraction == 1)
         {
             // The common case where we are just animating from/to, as in the
             // case of an SimpleMotionPath
-            var easedF:Number = (keyframes[1].easer) ?
-                keyframes[1].easer.ease(fraction) :
+            var easedF:Number = (nextFrame.easer) ?
+                nextFrame.easer.ease(fraction) :
                 fraction;
-            return interpolator.interpolate(easedF, keyframes[0].value,
-                keyframes[1].value);
+            return interpolator.interpolate(easedF, keyframe.value,
+                nextFrame.value);
         }
         // if timeFraction on first keyframe is not set, call scaleKeyframes
         // should not generally happen, but if getValue() is called before
         // an owning effect is played, then timeFractions were not set
-        if (keyframes[0].timeFraction != keyframes[0].timeFraction)
+        if (keyframe.timeFraction != keyframe.timeFraction)
             scaleKeyframes(keyframes[keyframes.length-1].time);
         var prevT:Number = 0;
-        var prevValue:Number = keyframes[0].value;
+        var prevValue:Number = keyframe.value;
         for (var i:int = 1; i < n; ++i)
         {
             var kf:Keyframe = keyframes[i];
