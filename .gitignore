@@ -18,3 +18,4 @@ build/*/*.mobileprovision
 *.iml
 *.iws
 *.idea
+target/
