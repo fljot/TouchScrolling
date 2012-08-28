@@ -1,5 +1,6 @@
 package com.inreflected.ui.touchScroll
 {
+	import flash.errors.IllegalOperationError;
 	import flash.events.TimerEvent;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
@@ -144,6 +145,14 @@ package com.inreflected.ui.touchScroll
 		protected var _scrollBounds:Rectangle = new Rectangle();
 		
 		/**
+		 * Scroll bounds may change for 2 reasons:
+		 * 1. Device orientation changing leading to viewport size change and 
+		 * 2. Other layout changes.
+		 * 
+		 * If device orientation is changing it is recommended to simply stop throw effect
+		 * (if playing) and snap positions to valid values (because it is hard to guess correctly
+		 * for any more complicated decision).
+		 * 
 		 * 
 		 */
 		public function get scrollBounds():Rectangle
@@ -152,11 +161,16 @@ package com.inreflected.ui.touchScroll
 		}
 		public function set scrollBounds(value:Rectangle):void
 		{
+			if (!value)
+			{
+				throw new IllegalOperationError("Cannot set null scrollBounds.");
+			}
+			
 			if (_scrollBounds == value ||
-				(_scrollBounds && value && _scrollBounds.equals(value)))
+				(_scrollBounds && _scrollBounds.equals(value)))
 				return;
 			
-			_scrollBounds = value ? value.clone() : null;
+			_scrollBounds = value.clone();
 			
 			updateCanScroll();
 			// TODO: somewhere in container need to call: checkScrollPosition()
