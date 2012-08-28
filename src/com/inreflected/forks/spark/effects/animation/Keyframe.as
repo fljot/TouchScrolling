@@ -92,7 +92,7 @@ public class Keyframe
      *  @productversion Flex 4
      */
     public function Keyframe(time:Number = NaN,
-        value:Number = null, valueBy:Object = null)
+        value:Number = NaN, valueBy:Object = null)
     {
         this.value = value;
         this.time = time;
