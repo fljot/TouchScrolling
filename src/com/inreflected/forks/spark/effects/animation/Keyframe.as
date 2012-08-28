@@ -21,7 +21,7 @@ package com.inreflected.forks.spark.effects.animation
 {
 
 	import com.inreflected.forks.spark.effects.easing.IEaser;
-import com.inreflected.forks.spark.effects.easing.Linear;
+	import com.inreflected.forks.spark.effects.easing.Linear;
 
 /**
  *  The Keyframe class defines the value of a property at a specific time during an effect.
@@ -92,7 +92,7 @@ public class Keyframe
      *  @productversion Flex 4
      */
     public function Keyframe(time:Number = NaN,
-        value:Object = null, valueBy:Object = null)
+        value:Number = null, valueBy:Object = null)
     {
         this.value = value;
         this.time = time;
@@ -126,7 +126,7 @@ public class Keyframe
      *  @playerversion AIR 1.5
      *  @productversion Flex 4
      */
-    public var value:Object;
+    public var value:Number;
 
     [Inspectable(minValue="0.0")]
 

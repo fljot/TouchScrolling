@@ -185,17 +185,16 @@ public class Linear implements IEaser
         if (easeInFraction == 0 && easeOutFraction == 0)
             return fraction;
 
-        var runRate:Number = 1 / (1 - easeInFraction/2 - easeOutFraction/2);
+        var runRate:Number = 1 / (1 - (easeInFraction + easeOutFraction) * 0.5);
         if (fraction < easeInFraction)
-            return fraction * runRate * (fraction / easeInFraction) / 2;
+            return fraction * runRate * (fraction / easeInFraction) * 0.5;
         if (fraction > (1 - easeOutFraction))
         {
             var decTime:Number = fraction - (1 - easeOutFraction);
             var decProportion:Number = decTime / easeOutFraction;
-            return runRate * (1 - easeInFraction/2 - easeOutFraction +
-                decTime * (2 - decProportion) / 2);
+            return runRate * (1 - (easeInFraction - decTime * (2 - decProportion)) * 0.5 - easeOutFraction);
         }
-        return runRate * (fraction - easeInFraction/2);
+        return runRate * (fraction - easeInFraction * 0.5);
     }
 }
 }

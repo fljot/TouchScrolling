@@ -20,7 +20,6 @@
 package com.inreflected.forks.spark.effects.animation
 {
 
-import com.inreflected.forks.spark.effects.interpolation.IInterpolator;
 import com.inreflected.forks.spark.effects.interpolation.NumberInterpolator;
 
 [DefaultProperty("keyframes")]
@@ -113,7 +112,7 @@ public class MotionPath
      *  @playerversion AIR 1.5
      *  @productversion Flex 4
      */
-    public var interpolator:IInterpolator = NumberInterpolator.getInstance();
+    public var interpolator:NumberInterpolator = NumberInterpolator.getInstance();
 
     /**
      *  A sequence of Keyframe objects that represent the time/value pairs
@@ -243,23 +242,25 @@ public class MotionPath
         if (!keyframes)
             return null;
         var n:int = keyframes.length;
-        if (n == 2 && keyframes[1].timeFraction == 1)
+		const keyframe : Keyframe = keyframes[0];
+		const nextKeyframe : Keyframe = keyframes[1];
+		if (n == 2 &&  nextKeyframe.timeFraction == 1)
         {
             // The common case where we are just animating from/to, as in the
             // case of an SimpleMotionPath
-            var easedF:Number = (keyframes[1].easer) ?
-                keyframes[1].easer.ease(fraction) :
+            var easedF:Number = ( nextKeyframe.easer) ?
+                 nextKeyframe.easer.ease(fraction) :
                 fraction;
-            return interpolator.interpolate(easedF, keyframes[0].value,
-                keyframes[1].value);
+            return interpolator.interpolate(easedF, keyframe.value,
+                 nextKeyframe.value);
         }
         // if timeFraction on first keyframe is not set, call scaleKeyframes
         // should not generally happen, but if getValue() is called before
         // an owning effect is played, then timeFractions were not set
-        if (isNaN(keyframes[0].timeFraction))
+        if (keyframe.timeFraction == keyframe.timeFraction)
             scaleKeyframes(keyframes[keyframes.length-1].time);
         var prevT:Number = 0;
-        var prevValue:Object = keyframes[0].value;
+        var prevValue:Number = keyframe.value;
         for (var i:int = 1; i < n; ++i)
         {
             var kf:Keyframe = keyframes[i];

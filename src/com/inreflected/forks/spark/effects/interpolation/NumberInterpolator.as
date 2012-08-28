@@ -32,7 +32,7 @@ package com.inreflected.forks.spark.effects.interpolation
  *  @playerversion AIR 1.5
  *  @productversion Flex 4
  */
-public class NumberInterpolator implements IInterpolator
+public class NumberInterpolator
 {
     private static var theInstance:NumberInterpolator;
 
@@ -90,18 +90,17 @@ public class NumberInterpolator implements IInterpolator
      *  @playerversion AIR 1.5
      *  @productversion Flex 4
      */
-    public function interpolate(fraction:Number, startValue:Object,
-        endValue:Object):Object
+    public function interpolate(fraction:Number, startValue:Number,
+        endValue:Number):Number
     {
         // Quick test for 0 or 1 to avoid round-off error on either end
         if (fraction == 0)
             return startValue;
         else if (fraction == 1)
             return endValue;
-        if ((startValue is Number && isNaN(Number(startValue))) ||
-            (endValue is Number && isNaN(Number(endValue))))
+        if (startValue != startValue || endValue != endValue)
             throw new Error("NumberInterpolator cannotCalculateValue with values: [" + startValue + ", " + endValue + "]");
-        return Number(startValue) + (fraction * (Number(endValue) - Number(startValue)));
+        return startValue + (fraction * (endValue - startValue));
     }
 
     /**
@@ -112,9 +111,9 @@ public class NumberInterpolator implements IInterpolator
      *  @playerversion AIR 1.5
      *  @productversion Flex 4
      */
-    public function increment(baseValue:Object, incrementValue:Object):Object
+    public function increment(baseValue:Number, incrementValue:Number):Object
     {
-        return Number(baseValue) + Number(incrementValue);
+        return baseValue + incrementValue;
     }
 
     /**
@@ -125,9 +124,9 @@ public class NumberInterpolator implements IInterpolator
      *  @playerversion AIR 1.5
      *  @productversion Flex 4
      */
-   public function decrement(baseValue:Object, decrementValue:Object):Object
+   public function decrement(baseValue:Number, decrementValue:Number):Object
    {
-        return Number(baseValue) - Number(decrementValue);
+        return baseValue - decrementValue;
    }
 }
 }
