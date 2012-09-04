@@ -143,6 +143,8 @@ package com.inreflected.ui.touchScroll
 		
 		/** @private */
 		protected var _scrollBounds:Rectangle = new Rectangle();
+		protected var _measuredScrollBounds:Rectangle = new Rectangle();
+		protected var _explicitScrollBounds:Rectangle;
 		
 		/**
 		 * Scroll bounds may change for 2 reasons:
@@ -152,28 +154,34 @@ package com.inreflected.ui.touchScroll
 		 * If device orientation is changing it is recommended to simply stop throw effect
 		 * (if playing) and snap positions to valid values (because it is hard to guess correctly
 		 * for any more complicated decision).
-		 * 
-		 * 
 		 */
 		public function get scrollBounds():Rectangle
 		{
-			return _scrollBounds ? _scrollBounds.clone() : null;
+			return _scrollBounds.clone();
 		}
 		public function set scrollBounds(value:Rectangle):void
 		{
-			if (!value)
-			{
-				throw new IllegalOperationError("Cannot set null scrollBounds.");
-			}
-			
-			if (_scrollBounds == value ||
-				(_scrollBounds && _scrollBounds.equals(value)))
+			if (_explicitScrollBounds == value ||
+				(_explicitScrollBounds && value && _explicitScrollBounds.equals(value)))
 				return;
 			
-			_scrollBounds = value.clone();
+			_explicitScrollBounds = value ? value.clone() : null;
 			
-			updateCanScroll();
-			// TODO: somewhere in container need to call: checkScrollPosition()
+			invalidateScrollBounds();
+		}
+		
+		
+		protected var _contentWidth:Number = 0;
+		public function contentWidth():Number
+		{
+			return _contentWidth;
+		}
+		
+		
+		protected var _contentHeight:Number = 0;
+		public function contentHeight():Number
+		{
+			return _contentHeight;
 		}
 		
 		
@@ -227,6 +235,22 @@ package com.inreflected.ui.touchScroll
 		}
 		
 		
+		public function setContentSize(width:Number, height:Number):void
+		{
+			//TODO: maybe allow NaN for unlimited bounds (endless scrolling)?
+			if (!(width >= 0) || !(height >= 0))
+			{
+				throw new ArgumentError("Content size must be non negative. " +
+				"Passed values: width = " + width + ", height = " + height);
+			}
+			
+			_contentWidth = width;
+			_contentHeight = height;
+			
+			invalidateScrollBounds();
+		}
+		
+		
 		/**
 		 * Viewport size affects pull and bounce effects only.
 		 * (So changing it is at any time should not bring any critical problems)
@@ -241,6 +265,16 @@ package com.inreflected.ui.touchScroll
 			
 			_viewportWidth = width;
 			_viewportHeight = height;
+			
+			invalidateScrollBounds();
+		}
+		
+		/**
+		 * An alias to scrollBounds setter, just for consistency in "setXXX" API.
+		 */
+		public function setScrollBounds(bounds:Rectangle):void
+		{
+			this.scrollBounds = bounds;
 		}
 		
 		
@@ -425,38 +459,78 @@ package com.inreflected.ui.touchScroll
 		//
 		//--------------------------------------------------------------------------
 		
+		protected function setEffectiveScrollBounds(left:Number, top:Number, right:Number, bottom:Number):void
+		{
+			_scrollBounds.left = left;
+			_scrollBounds.top = top;
+			_scrollBounds.right = right;
+			_scrollBounds.bottom = bottom;
+			
+			updateCanScroll();
+		}
+		
+		
+		protected function getExplicitOrMeasuredScrollBounds():Rectangle
+		{
+			return _explicitScrollBounds || _measuredScrollBounds;
+		}
+		
+		
 		protected function updateCanScroll():void
 		{
-			_canScrollHorizontally = (bounceEnabled && allwaysBounceHorizontal) || _scrollBounds.width > 0;
-			_canScrollVertically = (bounceEnabled && allwaysBounceVertical) || _scrollBounds.height > 0;
+			const scrollBounds:Rectangle = _scrollBounds;
+			_canScrollHorizontally = (bounceEnabled && allwaysBounceHorizontal) || scrollBounds.width > 0;
+			_canScrollVertically = (bounceEnabled && allwaysBounceVertical) || scrollBounds.height > 0;
+		}
+		
+		
+		protected function measureScrollBounds():void
+		{
+			_measuredScrollBounds.left = 0;
+			_measuredScrollBounds.top = 0;
+			_measuredScrollBounds.width = _contentWidth - _viewportWidth;
+			_measuredScrollBounds.height = _contentHeight - _viewportHeight;
+		}
+		
+		
+		protected function invalidateScrollBounds():void
+		{
+			measureScrollBounds();
+			const scrollBounds:Rectangle = getExplicitOrMeasuredScrollBounds();
+			//TODO: if paging — adjust scrollbounds (don't forget to clone)
+			setEffectiveScrollBounds(scrollBounds.left, scrollBounds.top, scrollBounds.right, scrollBounds.bottom);
+			//TODO: next TODOs here or in setScrollBounds
+			//TODO: clipToScrollBounds now or let it be till touch interaction starts?
+			//TODO: snap&stop or rethrow (depending on isScrolling inTouchInteraction)
 		}
 		
 		
 		protected function clipToScrollBounds():void
 		{
+			const scrollBounds:Rectangle = _scrollBounds;
 			var changed:Boolean = false;
 			
-			if (_positionX < _scrollBounds.left)
+			if (_positionX < scrollBounds.left)
 			{
-				_positionX = _scrollBounds.left;
+				_positionX = scrollBounds.left;
 				changed = true;
 			}
 			else
-			if (_positionX > _scrollBounds.right)
+			if (_positionX > scrollBounds.right)
 			{
-				_positionX = _scrollBounds.right;
+				_positionX = scrollBounds.right;
 				changed = true;
 			}
 			
-			if (_positionY < _scrollBounds.top)
+			if (_positionY < scrollBounds.top)
 			{
-				_positionY = _scrollBounds.top;
+				_positionY = scrollBounds.top;
 				changed = true;
 			}
 			else
-			if (_positionY > _scrollBounds.bottom)
+			if (_positionY > scrollBounds.bottom)
 			{
-				_positionY = _scrollBounds.bottom;
+				_positionY = scrollBounds.bottom;
 				changed = true;
 			}
 			
