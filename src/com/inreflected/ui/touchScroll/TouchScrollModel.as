@@ -172,14 +172,14 @@ package com.inreflected.ui.touchScroll
 		
 		
 		protected var _contentWidth:Number = 0;
-		public function contentWidth():Number
+		public function get contentWidth():Number
 		{
 			return _contentWidth;
 		}
 		
 		
 		protected var _contentHeight:Number = 0;
-		public function contentHeight():Number
+		public function get contentHeight():Number
 		{
 			return _contentHeight;
 		}
