@@ -374,8 +374,8 @@ package com.inreflected.ui.touchScroll
 				}
 			}
 			
-			if (_lockVertical) dx = 0;
-			if (_lockHorizontal) dy = 0;
+			if (_lockVertical || !canScrollHorizontally) dx = 0;
+			if (_lockHorizontal || !canScrollVertically) dy = 0;
 			
 			_lastDirectionX = (canScrollHorizontally && dx != 0) ? (dx > 0 ? 1 : -1) : 0;
 			_lastDirectionY = (canScrollVertically && dy != 0) ? (dy > 0 ? 1 : -1) : 0;
