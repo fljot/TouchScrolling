@@ -420,7 +420,7 @@ package com.inreflected.ui.touchScroll
 		}
 		
 		
-		public function onDragEnd():void
+		public function onInteractionEnd():void
 		{
 			_directionalLockTimer.reset();
 			
