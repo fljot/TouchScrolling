@@ -517,7 +517,6 @@ package com.inreflected.ui.touchScroll
 			{
 				_measuredScrollBounds.width = Math.max(0, int(_contentWidth / _viewportWidth) - 1) * _viewportWidth;
 				_measuredScrollBounds.height = Math.max(0, int(_contentHeight / _viewportHeight) - 1) * _viewportHeight;
-				trace(_measuredScrollBounds.height, _contentHeight, _viewportHeight);
 			}
 			else
 			{
