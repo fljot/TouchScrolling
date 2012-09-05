@@ -128,6 +128,9 @@ package com.inreflected.ui.touchScroll
 		protected var _throwFinalHSP:Number;
 		protected var _throwFinalVSP:Number;
 		
+		protected var _currentPageHSP:Number = 0;
+		protected var _currentPageVSP:Number = 0;
+		
 		//----------------------------------
 		// Flags 
 		//----------------------------------
@@ -216,6 +219,27 @@ package com.inreflected.ui.touchScroll
 		public function get isScrolling():Boolean
 		{
 			return _isScrolling;
+		}
+		
+		
+		/** @private */
+		private var _pagingEnabled:Boolean;
+		
+		/**
+		 * 
+		 */
+		public function get pagingEnabled():Boolean
+		{
+			return _pagingEnabled;
+		}
+		public function set pagingEnabled(value:Boolean):void
+		{
+			if (_pagingEnabled == value)
+				return;
+			
+			_pagingEnabled = value;
+			
+			invalidateScrollBounds();
 		}
 		
 		
@@ -488,8 +512,18 @@ package com.inreflected.ui.touchScroll
 		{
 			_measuredScrollBounds.left = 0;
 			_measuredScrollBounds.top = 0;
-			_measuredScrollBounds.width = _contentWidth - _viewportWidth;
-			_measuredScrollBounds.height = _contentHeight - _viewportHeight;
+			
+			if (pagingEnabled)
+			{
+				_measuredScrollBounds.width = Math.max(0, int(_contentWidth / _viewportWidth) - 1) * _viewportWidth;
+				_measuredScrollBounds.height = Math.max(0, int(_contentHeight / _viewportHeight) - 1) * _viewportHeight;
+				trace(_measuredScrollBounds.height, _contentHeight, _viewportHeight);
+			}
+			else
+			{
+				_measuredScrollBounds.width = _contentWidth - _viewportWidth;
+				_measuredScrollBounds.height = _contentHeight - _viewportHeight;
+			}
 		}
 		
 		
@@ -497,7 +531,6 @@ package com.inreflected.ui.touchScroll
 		{
 			measureScrollBounds();
 			const scrollBounds:Rectangle = getExplicitOrMeasuredScrollBounds();
-			//TODO: if paging — adjust scrollbounds (don't forget to clone)
 			setEffectiveScrollBounds(scrollBounds.left, scrollBounds.top, scrollBounds.right, scrollBounds.bottom);
 			//TODO: next TODOs here or in setScrollBounds
 			//TODO: clipToScrollBounds now or let it be till touch interaction starts?
@@ -695,33 +728,34 @@ package com.inreflected.ui.touchScroll
 			}
 			
 			const scrollBounds:Rectangle = _scrollBounds;
-			var minHSP:Number = scrollBounds.left;
-			var minVSP:Number = scrollBounds.top;
-			var maxHSP:Number = scrollBounds.right;
-			var maxVSP:Number = scrollBounds.bottom;
+			var minX:Number = scrollBounds.left;
+			var minY:Number = scrollBounds.top;
+			var maxX:Number = scrollBounds.right;
+			var maxY:Number = scrollBounds.bottom;
 			
 			var decelerationRate:Number = this.decelerationRate;
 			
-//			if (pagingEnabled)
-//			{
-//				// See whether a page switch is warranted for this touch gesture.
-//				if (canScrollHorizontally)
-//				{
-//					_currentPageHSP = determineNewPageScrollPosition(velocityX, HORIZONTAL_SCROLL_POSITION);
-//					// "lock" to the current page
-//					minHSP = maxHSP = _currentPageHSP; 
-//				}
-//				if (canScrollVertically)
-//				{
-//					_currentPageVSP = determineNewPageScrollPosition(velocityY, VERTICAL_SCROLL_POSITION);
-//					// "lock" to the current page
-//					minVSP = maxVSP = _currentPageVSP;	
-//				}
-//				
-//				// Flex team attenuates velocity here,
-//				// but I think it's better to adjust friction to preserve correct starting velocity.
-//				decelerationRate *= 0.98;
-//			}
+			if (pagingEnabled)
+			{
+				// See whether a page switch is warranted for this touch gesture.
+				if (canScrollHorizontally)
+				{
+					_currentPageHSP = determineNewPageScrollPosition(velocityX, _positionX, _currentPageHSP, _viewportWidth, minX, maxX);
+					// "lock" to the current page
+					minX = maxX = _currentPageHSP; 
+				}
+				if (canScrollVertically)
+				{
+					_currentPageVSP = determineNewPageScrollPosition(velocityY, _positionY, _currentPageVSP, _viewportHeight, minY, maxY);
+					// "lock" to the current page
+					minY = maxY = _currentPageVSP;	
+				}
+				
+				// Normally we don't want to see much of a bounce, so
+				// Flex team attenuates velocity here,
+				// but I think it's better to adjust friction to preserve correct starting velocity.
+				decelerationRate *= 0.98;
+			}
 			
 //			_throwEffect.propertyNameX = canScrollHorizontally ? HORIZONTAL_SCROLL_POSITION : null;
 //			_throwEffect.propertyNameY = canScrollVertically ? VERTICAL_SCROLL_POSITION : null;
@@ -729,10 +763,10 @@ package com.inreflected.ui.touchScroll
 			_throwEffect.startingVelocityY = velocityY;
 			_throwEffect.startingPositionX = _positionX;
 			_throwEffect.startingPositionY = _positionY;
-			_throwEffect.minPositionX = minHSP;
-			_throwEffect.minPositionY = minVSP;
-			_throwEffect.maxPositionX = maxHSP;
-			_throwEffect.maxPositionY = maxVSP;
+			_throwEffect.minPositionX = minX;
+			_throwEffect.minPositionY = minY;
+			_throwEffect.maxPositionX = maxX;
+			_throwEffect.maxPositionY = maxY;
 			_throwEffect.decelerationRate = decelerationRate;
 			_throwEffect.viewportWidth = _viewportWidth;
 			_throwEffect.viewportHeight = _viewportHeight;
@@ -775,6 +809,77 @@ package com.inreflected.ui.touchScroll
 				// due to bounce/pull.
 				// That doesn't seem necessary for me.
 			}
+		}
+		
+		
+		/**
+		 *  This function determines whether a switch to an adjacent page is warranted, given 
+		 *  the distance dragged and/or the velocity thrown. 
+		 */
+		protected function determineNewPageScrollPosition(velocity:Number,
+														  position:Number,
+														  currPagePosition:Number,
+														  viewportSize:Number,
+														  minPosition:Number,
+														  maxPosition:Number):Number
+		{
+			var pagePosition:Number;
+			const stationaryOffsetThreshold:Number = viewportSize * 0.5;
+			
+			// Check both the throw velocity and the drag distance. If either exceeds our threholds, then we switch to the next page.
+			if (velocity < -minVelocity || position >= currPagePosition + stationaryOffsetThreshold)
+			{
+				// Go to the next page
+				// Set the new page scroll position so the throw effect animates the page into place
+				pagePosition = Math.min(currPagePosition + viewportSize, maxPosition);
+			}
+			else
+			if (velocity > minVelocity || position <= currPagePosition - stationaryOffsetThreshold)
+			{
+				// Go to the previous page
+				pagePosition = Math.max(currPagePosition - viewportSize, minPosition);
+			}
+			else
+			{
+				// Snap to the current one
+				pagePosition = currPagePosition;
+			}
+			
+			// Ensure the new page position is snapped appropriately
+			pagePosition = getSnappedPosition(pagePosition, viewportSize, minPosition);
+			
+			return pagePosition;
+		}
+		
+		
+		/**
+		 *  This function takes a scroll position and the associated property name, and finds
+		 *  the nearest snapped position (i.e. one that satifises the current scrollSnappingMode).
+		 */
+		protected function getSnappedPosition(position:Number, viewportSize:Number, minPosition:Number):Number
+		{
+//			if (pagingEnabled && !snappingDelegate)
+			if (pagingEnabled)
+			{
+				// If we're in paging mode and no snapping is enabled, then we must snap
+				// the position to the beginning of a page. i.e. a multiple of the 
+				// viewport size.
+				if (viewportSize > 0)
+				{
+					// If minPosition is NaN or some Infinity we use 0 as a base.
+					const basePosition:Number = ((minPosition * 0) == 0) ? minPosition : 0;
+					position = basePosition + Math.round(position / viewportSize) * viewportSize;
+					
+					//TODO: Is it neccesary to clip value here or in snapContentScrollPositions() is enough?
+				}
+			}
+//			else if (snappingDelegate)
+//			{
+//				position = snappingDelegate.getSnappedPosition(position, propertyName);
+//			}
+			
+			//TODO: to round or not to round?
+			return Math.round(position);
 		}
 		
 		
