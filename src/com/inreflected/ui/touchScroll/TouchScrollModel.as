@@ -95,8 +95,8 @@ package com.inreflected.ui.touchScroll
 		
 		protected var _viewportWidth:Number = 0;
 		protected var _viewportHeight:Number = 0;
-		protected var _positionX:Number;
-		protected var _positionY:Number;
+		protected var _positionX:Number = 0;
+		protected var _positionY:Number = 0;
 		/**
 		 *  Keeps track of the horizontal scroll position
 		 *  before scrolling started, used to perform drag scroll.
@@ -136,6 +136,7 @@ package com.inreflected.ui.touchScroll
 		//----------------------------------
 		protected var _lockHorizontal:Boolean;
 		protected var _lockVertical:Boolean;
+		protected var _throwReachedEdgePosition:Boolean;
 		
 		
 		public function TouchScrollModel()
@@ -209,6 +210,13 @@ package com.inreflected.ui.touchScroll
 		public function get canScrollVertically():Boolean
 		{
 			return _canScrollVertically;
+		}
+		
+		
+		protected var _inTouchInteraction:Boolean;
+		public function get inTouchInteraction():Boolean
+		{
+			return _inTouchInteraction;
 		}
 		
 		
@@ -304,6 +312,8 @@ package com.inreflected.ui.touchScroll
 		
 		public function stop():void
 		{
+			_inTouchInteraction = false;
+			
 			_directionalLockTimer.reset();
 			_lockHorizontal = _lockVertical = false;//TODO: maybe in onDragBegin?
 			_isScrolling = false;
@@ -312,6 +322,8 @@ package com.inreflected.ui.touchScroll
 			{
 				_throwEffect.stop(false);
 			}
+			
+			snapToValidPosition();
 		}
 		
 		
@@ -335,6 +347,8 @@ package com.inreflected.ui.touchScroll
 		public function onInteractionBegin(positionX:Number, positionY:Number):void
 		{
 			stopThrowEffectOnTouch();
+			
+			_inTouchInteraction = true;
 			
 			setPosition(positionX, positionY);//TODO: or set fields directly?
 			if (isScrolling)
@@ -446,6 +460,8 @@ package com.inreflected.ui.touchScroll
 		
 		public function onInteractionEnd():void
 		{
+			_inTouchInteraction = false;
+			
 			_directionalLockTimer.reset();
 			
 			if (isScrolling)
@@ -491,6 +507,8 @@ package com.inreflected.ui.touchScroll
 			_scrollBounds.bottom = bottom;
 			
 			updateCanScroll();
+			
+			validatePosition();
 		}
 		
 		
@@ -520,8 +538,8 @@ package com.inreflected.ui.touchScroll
 			}
 			else
 			{
-				_measuredScrollBounds.width = _contentWidth - _viewportWidth;
-				_measuredScrollBounds.height = _contentHeight - _viewportHeight;
+				_measuredScrollBounds.width = Math.max(0, _contentWidth - _viewportWidth);
+				_measuredScrollBounds.height = Math.max(0, _contentHeight - _viewportHeight);
 			}
 		}
 		
@@ -531,12 +549,12 @@ package com.inreflected.ui.touchScroll
 			measureScrollBounds();
 			const scrollBounds:Rectangle = getExplicitOrMeasuredScrollBounds();
 			setEffectiveScrollBounds(scrollBounds.left, scrollBounds.top, scrollBounds.right, scrollBounds.bottom);
-			//TODO: next TODOs here or in setScrollBounds
-			//TODO: clipToScrollBounds now or let it be till touch interaction starts?
-			//TODO: snap&stop or rethrow (depending on isScrolling inTouchInteraction)
 		}
 		
 		
+		/**
+		 * Used to adjust scroll positions on interaction start (if it's currently pulled/bounces).
+		 */
 		protected function clipToScrollBounds():void
 		{
 			const scrollBounds:Rectangle = _scrollBounds;
@@ -564,6 +582,123 @@ package com.inreflected.ui.touchScroll
 			{
 				_positionY = scrollBounds.bottom;
 				changed = true;
+			}
+			
+			if (changed)
+			{
+				positionUpdateCallback(_positionX, _positionY);
+			}
+		}
+		
+		
+		protected function validatePosition():void
+		{
+			const scrollBounds:Rectangle = _scrollBounds;
+			
+			if (_throwEffect && _throwEffect.isPlaying)
+			{
+				var needRethrow:Boolean = false;
+				
+				if (!pagingEnabled)
+				{
+					// Condition explanation:
+					// _throwReachedEdgePosition == true means throw effect will bounce off the edge,
+					// which is probably not desired given new scroll bounds.
+					if (_throwReachedEdgePosition ||
+						_throwFinalVSP > scrollBounds.bottom || _throwFinalVSP < scrollBounds.top ||
+						_throwFinalHSP > scrollBounds.right || _throwFinalHSP < scrollBounds.left)
+					{
+						needRethrow = true;
+					}
+				}
+				else if (getSnappedPosition(_throwFinalVSP, _viewportHeight, scrollBounds.top, scrollBounds.bottom) != _throwFinalVSP ||
+						 getSnappedPosition(_throwFinalHSP, _viewportWidth, scrollBounds.left, scrollBounds.right) != _throwFinalHSP)
+				{
+					needRethrow = true;
+				}
+				
+				//TODO: this case could be potentially improved
+				
+				if (needRethrow)
+				{
+					// Stop the current animation and start a new one that gets us to the correct position.
+					
+					// Get the effect's current velocity
+					const velocity:Point = _throwEffect.getCurrentVelocity();
+					
+					// Stop the existing throw animation now that we've determined its current velocities.
+					_throwEffect.stop(false);
+					
+					// Now perform a new throw to get us to the right position.
+					if (setupThrowEffect(-velocity.x, -velocity.y))
+					{
+						_throwEffect.play();
+					}
+				}
+			}
+			else
+			if (_inTouchInteraction)
+			{
+				// Touch interaction is in effect.
+				
+				if (_positionX < scrollBounds.left || _positionX > scrollBounds.right)
+				{
+					// We were in pull and still are - do nothing (i.e. "pull to refresh")
+					// or we are simply out of the bounds now (unlikely to happen, TODO clip maybe)
+				}
+				else
+				{
+					_touchHSP = _positionX;
+					_cummulativeOffsetX = 0;
+				}
+				
+				if (_positionY < scrollBounds.top || _positionY > scrollBounds.bottom)
+				{
+					// We were in pull and still are - do nothing (i.e. "pull to refresh")
+					// or we are simply out of the bounds now (unlikely to happen, TODO clip maybe)
+				}
+				else
+				{
+					_touchVSP = _positionY;
+					_cummulativeOffsetY = 0;
+				}
+			}
+			else
+			{
+				// No touch interaction is in effect, but the content may be sitting at
+				// a scroll position that is now invalid.  If so, snap the content to
+				// a valid position.
+				
+				snapToValidPosition();
+			}
+		}
+		
+		
+		protected function snapToValidPosition():void
+		{
+			const scrollBounds:Rectangle = _scrollBounds;
+			var pos:Number;
+			var changed:Boolean = false;
+			
+			pos = getSnappedPosition(_positionX, _viewportWidth, scrollBounds.left, scrollBounds.right);
+			if (_positionX != pos)
+			{
+				_positionX = pos;
+				changed = true;
+			}
+			
+			pos = getSnappedPosition(_positionY, _viewportHeight, scrollBounds.top, scrollBounds.bottom);
+			if (_positionY != pos)
+			{
+				_positionY = pos;
+				changed = true;
+			}
+			
+			if (pagingEnabled)
+			{
+				//TODO: move this somewhere else maybe?
+				_currentPageHSP = _positionX;
+				_currentPageVSP = _positionY;
 			}
 			
 			if (changed)
@@ -788,6 +923,9 @@ package com.inreflected.ui.touchScroll
 			_throwFinalHSP = _throwEffect.finalPosition.x;
 			_throwFinalVSP = _throwEffect.finalPosition.y;
 			
+			_throwReachedEdgePosition = (_throwFinalVSP == maxY || _throwFinalVSP == minY ||
+										 _throwFinalHSP == maxX || _throwFinalHSP == minX);
+			
 			return true;
 		}
 		
@@ -822,8 +960,8 @@ package com.inreflected.ui.touchScroll
 														  minPosition:Number,
 														  maxPosition:Number):Number
 		{
-			var pagePosition:Number;
 			const stationaryOffsetThreshold:Number = viewportSize * 0.5;
+			var pagePosition:Number;
 			
 			// Check both the throw velocity and the drag distance. If either exceeds our threholds, then we switch to the next page.
 			if (velocity < -minVelocity || position >= currPagePosition + stationaryOffsetThreshold)
@@ -845,7 +983,7 @@ package com.inreflected.ui.touchScroll
 			}
 			
 			// Ensure the new page position is snapped appropriately
-			pagePosition = getSnappedPosition(pagePosition, viewportSize, minPosition);
+			pagePosition = getSnappedPosition(pagePosition, viewportSize, minPosition, maxPosition);
 			
 			return pagePosition;
 		}
@@ -855,9 +993,9 @@ package com.inreflected.ui.touchScroll
 		 *  This function takes a scroll position and the associated property name, and finds
 		 *  the nearest snapped position (i.e. one that satifises the current scrollSnappingMode).
 		 */
-		protected function getSnappedPosition(position:Number, viewportSize:Number, minPosition:Number):Number
+		protected function getSnappedPosition(position:Number, viewportSize:Number, minPosition:Number, maxPosition:Number):Number
 		{
-//			if (pagingEnabled && !snappingDelegate)
+//			if (pagingEnabled && !snappingDelegate)//TODO different condition if custom snapping defined
 			if (pagingEnabled)
 			{
 				// If we're in paging mode and no snapping is enabled, then we must snap
@@ -868,8 +1006,6 @@ package com.inreflected.ui.touchScroll
 					// If minPosition is NaN or some Infinity we use 0 as a base.
 					const basePosition:Number = ((minPosition * 0) == 0) ? minPosition : 0;
 					position = basePosition + Math.round(position / viewportSize) * viewportSize;
-					
-					//TODO: Is it neccesary to clip value here or in snapContentScrollPositions() is enough?
 				}
 			}
 //			else if (snappingDelegate)
@@ -877,8 +1013,19 @@ package com.inreflected.ui.touchScroll
 //				position = snappingDelegate.getSnappedPosition(position, propertyName);
 //			}
 			
+			// Clip to scroll bounds (manually for performance and bulletproof NaN/Infinity)
+			if (position < minPosition)
+			{
+				position = position;
+			}
+			else
+			if (position > maxPosition)
+			{
+				position = maxPosition;
+			}
+			
 			//TODO: to round or not to round?
-			return Math.round(position);
+			return position;
 		}
 		
 		
