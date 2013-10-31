@@ -1016,7 +1016,7 @@ package com.inreflected.ui.touchScroll
 			// Clip to scroll bounds (manually for performance and bulletproof NaN/Infinity)
 			if (position < minPosition)
 			{
-				position = position;
+				position = minPosition;
 			}
 			else
 			if (position > maxPosition)
