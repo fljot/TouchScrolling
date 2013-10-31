@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.inreflected</groupId>
+	<artifactId>touch-scrolling</artifactId>
+	<packaging>swc</packaging>
+	<version>0.2.0-SNAPSHOT</version>
+
+	<properties>
+		<flexmojos.version>5.0-beta</flexmojos.version>
+		<flex.sdk.version>4.6.b.23201</flex.sdk.version>
+	</properties>
+
+	<build>
+		<sourceDirectory>src/</sourceDirectory>
+
+		<plugins>
+			<plugin>
+				<groupId>net.flexmojos.oss</groupId>
+				<artifactId>flexmojos-maven-plugin</artifactId>
+				<version>${flexmojos.version}</version>
+				<extensions>true</extensions>
+				<configuration>
+					<storepass/>
+					<skipTests>true</skipTests>
+					<skipTest>true</skipTest>
+					<debug>true</debug>
+					<verboseStacktraces>true</verboseStacktraces>
+					<!--
+					NB! SWC is compiled in debug mode with verbose stacktraces
+					for better development process.
+					It's okay and will not affect application performance
+					UNLESS you are using this library as RSL.
+					-->
+					<defines>
+						<property>
+							<name>CONFIG::Debug</name>
+							<value>false</value>
+						</property>
+					</defines>
+					<includeClasses>
+						<scan>
+							<includes>
+								<include>**</include>
+							</includes>
+							<excludes>
+								<exclude>com.inreflected.ui.touchScroll.TouchScrollManager</exclude>
+							</excludes>
+						</scan>
+					</includeClasses>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>com.adobe.flex</groupId>
+						<artifactId>compiler</artifactId>
+						<version>${flex.sdk.version}</version>
+						<type>pom</type>
+					</dependency>
+				</dependencies>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.adobe.flex.framework</groupId>
+			<artifactId>flex-framework</artifactId>
+			<version>${flex.sdk.version}</version>
+			<type>pom</type>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+
+	<repositories>
+		<repository>
+			<id>flex-mojos-repository</id>
+			<url>http://repository.sonatype.org/content/groups/flexgroup/</url>
+		</repository>
+
+		<repository>
+			<id>sonatype-repository</id>
+			<url>https://oss.sonatype.org/content/groups/public</url>
+		</repository>
+	</repositories>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>sonatype-repository</id>
+			<url>https://oss.sonatype.org/content/groups/public</url>
+			<releases>
+				<enabled>true</enabled>
+				<updatePolicy>never</updatePolicy>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+				<updatePolicy>never</updatePolicy>
+			</snapshots>
+		</pluginRepository>
+		<pluginRepository>
+			<id>flex-mojos-repository</id>
+			<url>http://repository.sonatype.org/content/groups/flexgroup/</url>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>trylogic</id>
+			<name>Trylogic</name>
+			<url>http://repo.trylogic.ru/content/repositories/public/</url>
+			<layout>default</layout>
+		</snapshotRepository>
+
+		<repository>
+			<id>trylogic-releases</id>
+			<name>Trylogic releases</name>
+			<url>http://repo.trylogic.ru/content/repositories/releases/</url>
+			<layout>default</layout>
+		</repository>
+	</distributionManagement>
+
+</project>
