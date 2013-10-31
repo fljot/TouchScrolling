@@ -27,8 +27,14 @@
 					<storepass/>
 					<skipTests>true</skipTests>
 					<skipTest>true</skipTest>
-					<debug>false</debug>
-					<optimize>true</optimize>
+					<debug>true</debug>
+					<verboseStacktraces>true</verboseStacktraces>
+					<!--
+					NB! SWC is compiled in debug mode with verbose stacktraces
+					for better development process.
+					It's okay and will not affect application performance
+					UNLESS you are using this library as RSL.
+					-->
 					<defines>
 						<property>
 							<name>CONFIG::Debug</name>
